@@ -1,0 +1,248 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: neirogen_app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./app:/var/www
+    networks:
+      - neirogen_network
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - DB_CONNECTION=pgsql
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_DATABASE=neirogen
+      - DB_USERNAME=neirogen
+      - DB_PASSWORD=secret
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=
+      - REDIS_PORT=6379
+      - QUEUE_CONNECTION=rabbitmq
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASSWORD=guest
+      - RABBITMQ_VHOST=/
+      - RABBITMQ_QUEUE=default
+      - COMFYUI_URL=${COMFYUI_URL:-http://comfyui-mock:8188}
+      - SVGGEN_URL=http://svggen:4000
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  comfyui-api:
+    image: neirogen/comfyui-api:cu118
+    container_name: neirogen_comfyui_api
+    restart: unless-stopped
+    profiles: ["comfy"]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - BASE=standalone
+      - SHELL=/bin/bash
+      # Expose API on 8188 inside container (default); do not change unless you know what you're doing
+      - COMFYUI_API_PORT=8188
+    ports:
+      - "8190:8188"
+    volumes:
+      - ./data/comfyui/models:/opt/ComfyUI/models
+      - ./data/comfyui/input:/opt/ComfyUI/input
+      - ./data/comfyui/output:/opt/ComfyUI/output
+    networks:
+      - neirogen_network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "python - <<'PY'\nimport socket\ns=socket.socket()\ns.settimeout(2)\ntry:\n  s.connect(('127.0.0.1', 8188))\n  s.close()\n  exit(0)\nexcept Exception:\n  exit(1)\nPY\n"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  db:
+    image: postgres:15
+    container_name: neirogen_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: neirogen
+      POSTGRES_USER: neirogen
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - neirogen_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: neirogen_redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - neirogen_network
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: neirogen_rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - neirogen_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: neirogen_frontend
+    restart: unless-stopped
+    profiles: ["dev"]
+    working_dir: /app
+    ports:
+      - "3001:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:3000/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    command: npm run dev
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      - NEXT_PUBLIC_COMFY_URL=${NEXT_PUBLIC_COMFY_URL:-http://localhost:8189}
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+      - HOST=0.0.0.0
+      - NEXT_TELEMETRY_DISABLED=1
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    networks:
+      - neirogen_network
+    depends_on:
+      app:
+        condition: service_healthy
+
+  queue-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: neirogen_queue
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./app:/var/www
+    networks:
+      - neirogen_network
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - DB_CONNECTION=pgsql
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_DATABASE=neirogen
+      - DB_USERNAME=neirogen
+      - DB_PASSWORD=secret
+      - QUEUE_CONNECTION=rabbitmq
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASSWORD=guest
+      - RABBITMQ_VHOST=/
+      - RABBITMQ_QUEUE=default
+      - COMFYUI_URL=http://comfyui-mock:8188
+    command: sh -lc "php artisan queue:work rabbitmq --sleep=1 --tries=3 --no-interaction"
+
+  svggen:
+    build:
+      context: ./svggen
+      dockerfile: Dockerfile
+    container_name: neirogen_svggen
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
+      - SD_MODEL_ID=${SD_MODEL_ID:-runwayml/stable-diffusion-v1-5}
+      - TORCH_DEVICE=${TORCH_DEVICE:-auto}
+      - HUGGINGFACE_HUB_CACHE=/data/hf-cache
+      - PUBLIC_STORAGE_PATH=${PUBLIC_STORAGE_PATH:-/data/public/svg}
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-http://localhost:8000/storage}
+      - MAX_CONCURRENT_JOBS=${MAX_CONCURRENT_JOBS:-1}
+      - JOB_TIMEOUT_SECONDS=${JOB_TIMEOUT_SECONDS:-120}
+    volumes:
+      - ./svggen/cache:/data/hf-cache
+      - ./app/storage/app/public:/data/public
+    networks:
+      - neirogen_network
+    healthcheck:
+      test: ["CMD-SHELL", "python - <<'PY'\nimport socket\ns=socket.socket()\ns.settimeout(2)\ntry:\n  s.connect(('127.0.0.1', 4000))\n  s.close()\n  exit(0)\nexcept Exception:\n  exit(1)\nPY\n"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  comfyui-mock:
+    image: python:3.11-slim
+    container_name: neirogen_comfyui_mock
+    restart: unless-stopped
+    profiles: ["dev"]
+    working_dir: /app
+    volumes:
+      - ./comfyui-mock:/app
+    command: sh -lc "pip install --no-cache-dir flask && python app.py"
+    ports:
+      - "8189:8188"
+    healthcheck:
+      test: ["CMD-SHELL", "python - <<'PY'\nimport urllib.request\ntry:\n  urllib.request.urlopen('http://localhost:8188/', timeout=2)\n  exit(0)\nexcept Exception:\n  exit(1)\nPY\n"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - neirogen_network
+
+volumes:
+  db_data:
+  frontend_node_modules:
+
+networks:
+  neirogen_network:
+    driver: bridge

@@ -1,0 +1,9 @@
+server:
+  command: "php artisan octane:start --server=roadrunner --host=0.0.0.0 --port=8000"
+  relay: pipes
+
+http:
+  address: 0.0.0.0:8000
+  middleware: ["gzip"]
+  uploads:
+    forbid: [".php", ".exe", ".bat"]

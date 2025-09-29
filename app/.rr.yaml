@@ -1,0 +1,39 @@
+server:
+  command: "php artisan octane:start --server=roadrunner --host=0.0.0.0 --port=8000"
+  relay: pipes
+
+http:
+  address: 0.0.0.0:8000
+  middleware: ["gzip"]
+  uploads:
+    forbid: [".php", ".exe", ".bat"]
+
+rpc:
+  listen: tcp://0.0.0.0:6001
+
+jobs:
+  num_pollers: 1
+  pipelines:
+    graphic_dictation:
+      driver: amqp
+      queue: generator.graphic_dictation
+      exchange: ""
+      prefetch: 8
+      exclusive: false
+      durable: true
+  consume:
+    graphic_dictation:
+      pipeline: graphic_dictation
+      pool:
+        num_workers: 1
+        supervisor:
+          max_worker_memory: 256
+          max_worker_ttl: 600
+          allocate_timeout: 60s
+          destroy_timeout: 60s
+
+service:
+  graphic_dictation_worker:
+    command: "go run ./server/generators/graphicdictation/cmd/graphicdictation"
+    process_num: 1
+    restart_sec: 5

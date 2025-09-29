@@ -1,0 +1,10 @@
+services:
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.47.0-jammy
+    container_name: neirogen_playwright
+    working_dir: /workspace
+    entrypoint: ["sleep", "infinity"]
+    volumes:
+      - ./frontend:/workspace
+    networks:
+      - neirogen_network

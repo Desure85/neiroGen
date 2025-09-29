@@ -1,0 +1,135 @@
+# --- General ---
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.swp
+*.swo
+*.lock
+*.pid
+*.seed
+*.bak
+*.orig
+*.rej
+*.patch
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.idea/
+.vscode/
+*.iml
+*.sublime-workspace
+*.sublime-project
+.cache/
+logs/
+data/
+# --- Environment files ---
+.env
+.env.*
+!.env.example
+*.local
+
+# --- Node / Next.js frontend ---
+frontend/node_modules/
+frontend/.next/
+frontend/.swc/
+frontend/.turbo/
+frontend/.npm/
+frontend/.cache/
+frontend/.env.local
+frontend/.env*.local
+frontend/out/
+frontend/build/
+frontend/coverage/
+
+# --- React Native / Expo (reserved) ---
+*.expo/
+.expo-shared/
+
+# --- Go ---
+app/bin/
+**/*.test
+*.test
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.out
+*.a
+*.o
+*.obj
+coverage.out
+
+# --- PHP / Laravel ---
+app/vendor/
+app/bootstrap/cache/
+app/storage/
+app/storage/*
+app/storage/app/public/
+app/public/storage
+composer.lock
+
+# --- Symfony / Laravel caches ---
+app/var/
+app/.phpunit.result.cache
+
+# --- RoadRunner ---
+app/.rr_cache/
+app/rr-worker*
+app/.rr.yaml.local
+
+# --- Python (svggen, comfyui) ---
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
+.pytest_cache/
+*.pytest_cache/
+.mypy_cache/
+.python-version
+.venv/
+venv/
+
+# --- Python build ---
+build/
+dist/
+*.egg-info/
+Pipfile.lock
+
+# --- ComfyUI mock data ---
+comfyui-mock/.cache/
+comfyui-mock/output/
+
+# --- SVG generator ---
+svggen/cache/
+svggen/.mypy_cache/
+svggen/.ruff_cache/
+svggen/.pytest_cache/
+
+# --- Docker ---
+.docker/
+*.tar
+*.img
+
+# --- Coverage & reports ---
+coverage/
+*.lcov
+*.htmlcov
+
+# --- Binary artifacts ---
+*.pdf
+*.zip
+*.tar.gz
+*.7z
+*.tgz
+*.gz
+*.xz
+
+# --- Temp directories ---
+/tmp/
+/tmp-*/
+
+# --- Misc ---
+.husky/_/
+notes/
