@@ -21,19 +21,22 @@ jobs:
       prefetch: 8
       exclusive: false
       durable: true
+    graphic_dictation_results:
+      driver: amqp
+      queue: generator.graphic_dictation.results
+      exchange: ""
+      prefetch: 8
+      exclusive: false
+      durable: true
   consume:
-    graphic_dictation:
-      pipeline: graphic_dictation
-      pool:
-        num_workers: 1
-        supervisor:
-          max_worker_memory: 256
-          max_worker_ttl: 600
-          allocate_timeout: 60s
-          destroy_timeout: 60s
-
+    - graphic_dictation
+    - graphic_dictation_results
 service:
   graphic_dictation_worker:
-    command: "go run ./server/generators/graphicdictation/cmd/graphicdictation"
+    command: "/var/www/bin/graphicdictation"
+    process_num: 1
+    restart_sec: 5
+  graphic_dictation_results_consumer:
+    command: "php artisan generator:graphic-dictation:consume-results"
     process_num: 1
     restart_sec: 5

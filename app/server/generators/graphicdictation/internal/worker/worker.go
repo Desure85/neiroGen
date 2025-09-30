@@ -24,7 +24,7 @@ const (
 	reconnectBackoffStart = 500 * time.Millisecond
 )
 
-// Run starts RabbitMQ consumer loop until context cancellation or fatal error.
+// Run starts RabbitMQ consumer loop and blocks until context cancellation or signal.
 func Run(ctx context.Context) error {
 	rabbitURL := os.Getenv("RABBITMQ_URL")
 	if rabbitURL == "" {
@@ -90,6 +90,7 @@ func connect(url string) (*amqp.Connection, *amqp.Channel, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("connect rabbit: %w", err)
 	}
+
 	ch, err := conn.Channel()
 	if err != nil {
 		_ = conn.Close()
@@ -100,7 +101,9 @@ func connect(url string) (*amqp.Connection, *amqp.Channel, error) {
 		_ = conn.Close()
 		return nil, nil, fmt.Errorf("set qos: %w", err)
 	}
+
 	return conn, ch, nil
+}
 
 func setupQueues(ch *amqp.Channel) error {
 	if _, err := ch.QueueDeclare(tasksQueueName, true, false, false, false, nil); err != nil {
@@ -112,49 +115,49 @@ func setupQueues(ch *amqp.Channel) error {
 	return nil
 }
 
-{{ ... }}
-    JobID      string                `json:"job_id"`
-    ShardIndex int                   `json:"shard_index"`
-    Status     string                `json:"status"`
-    Payload    *api.GenerateResponse `json:"payload,omitempty"`
-    Error      string                `json:"error,omitempty"`
+type resultMessage struct {
+	JobID      string                `json:"job_id"`
+	ShardIndex int                   `json:"shard_index"`
+	Status     string                `json:"status"`
+	Payload    *api.GenerateResponse `json:"payload,omitempty"`
+	Error      string                `json:"error,omitempty"`
 }
 
 func handleMessage(ch *amqp.Channel, msg *amqp.Delivery) error {
-    var req api.GenerateRequest
-    if err := gojson.Unmarshal(msg.Body, &req); err != nil {
-        return fmt.Errorf("decode request: %w", err)
-    }
+	var req api.GenerateRequest
+	if err := gojson.Unmarshal(msg.Body, &req); err != nil {
+		return fmt.Errorf("decode request: %w", err)
+	}
 
-    log.Printf("[graphic-dictation] processing job=%s shard=%d/%d", req.JobID, req.ShardIndex+1, req.ShardTotal)
+	log.Printf("[graphic-dictation] processing job=%s shard=%d/%d", req.JobID, req.ShardIndex+1, req.ShardTotal)
 
-    res, err := generator.Generate(req)
+	res, err := generator.Generate(req)
 
-    msgPayload := resultMessage{
-        JobID:      req.JobID,
-        ShardIndex: req.ShardIndex,
-    }
+	msgPayload := resultMessage{
+		JobID:      req.JobID,
+		ShardIndex: req.ShardIndex,
+	}
 
-    if err != nil {
-        msgPayload.Status = "failed"
-        msgPayload.Error = err.Error()
-    } else {
-        msgPayload.Status = "completed"
-        msgPayload.Payload = &res
-    }
+	if err != nil {
+		msgPayload.Status = "failed"
+		msgPayload.Error = err.Error()
+	} else {
+		msgPayload.Status = "completed"
+		msgPayload.Payload = &res
+	}
 
-    payload, err := gojson.Marshal(msgPayload)
-    if err != nil {
-        return fmt.Errorf("marshal result: %w", err)
-    }
+	payload, err := gojson.Marshal(msgPayload)
+	if err != nil {
+		return fmt.Errorf("marshal result: %w", err)
+	}
 
-    if err := ch.Publish("", resultsQueueName, false, false, amqp.Publishing{
-        ContentType: "application/json",
-        Body:        payload,
-        Expiration:  "600000",
-    }); err != nil {
-        return fmt.Errorf("publish result: %w", err)
-    }
+	if err := ch.Publish("", resultsQueueName, false, false, amqp.Publishing{
+		ContentType: "application/json",
+		Body:        payload,
+		Expiration:  "600000",
+	}); err != nil {
+		return fmt.Errorf("publish result: %w", err)
+	}
 
-    return nil
+	return nil
 }

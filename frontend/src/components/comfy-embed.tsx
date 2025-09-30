@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { API_BASE, getToken, apiFetch } from '@/lib/api'
+import { apiFetch } from '@/lib/api'
 
 
 async function fetchHealth() {

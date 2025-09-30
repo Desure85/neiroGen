@@ -1,10 +1,9 @@
-.PHONY: help up down build rebuild logs shell composer artisan migrate seed test frontend-install frontend-dev frontend-build frontend-lint frontend-test frontend-test-ci db-fresh db-seed artisan-tinker dev-backend dev-all ps up-dev up-prod
+.PHONY: help up down build rebuild logs shell composer artisan migrate seed test frontend-install frontend-dev frontend-build frontend-lint frontend-test frontend-test-ci db-fresh db-seed artisan-tinker dev-backend dev-all ps up-dev up-prod go-build-binary graphic-dictation-reset
 
 # Default target
 help: ## Show this help message
 	@echo 'Usage: make [target]'
 	@echo ''
-	@echo 'Targets:'
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 # Docker commands
@@ -79,6 +78,23 @@ frontend-test: ## Run frontend Jest tests
 
 frontend-test-ci: ## Run frontend Jest tests in CI-friendly way (installs dev deps as root to avoid EACCES)
 	docker compose run --rm -u root frontend sh -lc "(npm ci --include=dev --no-audit --no-fund || npm install --include=dev --no-audit --no-fund) && ./node_modules/.bin/jest --ci --runInBand --colors"
+
+GO_BUILDER_IMAGE ?= neirogen-go-binary-builder:latest
+
+graphic-dictation-reset: ## Purge graphic dictation queues and restart app worker
+	docker compose exec rabbitmq rabbitmqadmin purge queue=generator.graphic_dictation || true
+	docker compose exec rabbitmq rabbitmqadmin purge queue=generator.graphic_dictation.results || true
+	docker compose restart app
+
+go-build-binary: ## Build Go binary using docker builder, usage: make go-build-binary module_dir=... [package=...] output=...
+	@[ -n "$(module_dir)" ] || (echo "module_dir is required"; exit 1)
+	@[ -n "$(output)" ] || (echo "output is required"; exit 1)
+	docker build --load -t $(GO_BUILDER_IMAGE) docker/builders/go-binaries
+	docker run --rm -v $(PWD)/app:/workspace \
+		-e MODULE_DIR=$(module_dir) \
+		-e PACKAGE=$(or $(package),./cmd) \
+		-e OUTPUT=$(output) \
+		$(GO_BUILDER_IMAGE)
 
 # Full stack commands
 install: up composer frontend-install migrate ## Setup project from scratch

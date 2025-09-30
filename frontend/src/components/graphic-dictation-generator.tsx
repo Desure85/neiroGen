@@ -1,16 +1,17 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
-import Image from "next/image"
-import { Loader2, RefreshCw, Settings2, UploadCloud } from "lucide-react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import NextImage from "next/image"
+import { Loader2, RefreshCw, Settings2, UploadCloud, Upload } from "lucide-react"
 
 import { apiFetch } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
+import { cn } from "@/lib/utils"
+import { GraphicDictationResult } from "./graphic-dictation/types"
 
 interface GraphicDictationPayload {
   job_id: string
@@ -21,21 +22,16 @@ interface GraphicDictationPayload {
   error?: string | null
 }
 
-export interface GraphicDictationResult {
-  commands: Array<{ direction: string; steps: number }>
-  preview_image_url?: string | null
-  preview_svg_url?: string | null
-  instructions?: string[]
-  start_row?: number | null
-  start_col?: number | null
-  error?: string | null
-}
-
 interface GraphicDictationGeneratorProps {
   onResult?: (result: GraphicDictationResult) => void
+  onSvgGenerated?: (svgUrl: string | null) => void
+  prompt?: string
+  width?: number
+  height?: number
 }
 
 interface FormState {
+  description: string
   sourceImage: string
   gridWidth: number
   gridHeight: number
@@ -43,6 +39,7 @@ interface FormState {
   difficulty: "easy" | "medium" | "hard"
   allowDiagonals: boolean
   shards: number
+  useTemplate: boolean
 }
 
 const DIFFICULTY_OPTIONS: Array<{ value: FormState["difficulty"]; label: string }> = [
@@ -53,24 +50,61 @@ const DIFFICULTY_OPTIONS: Array<{ value: FormState["difficulty"]; label: string 
 
 const POLL_INTERVAL_MS = 2500
 
-export function GraphicDictationGenerator({ onResult }: GraphicDictationGeneratorProps) {
-  const [form, setForm] = useState<FormState>({
+async function fileToDataUrl(file: File): Promise<string> {
+  return await new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result
+      if (typeof result === "string") {
+        resolve(result)
+      } else {
+        reject(new Error("Не удалось преобразовать файл"))
+      }
+    }
+    reader.onerror = () => reject(new Error("Не удалось прочитать файл"))
+    reader.readAsDataURL(file)
+  })
+}
+
+export function GraphicDictationGenerator({ onResult, onSvgGenerated, prompt, width, height }: GraphicDictationGeneratorProps) {
+  const [form, setForm] = useState<FormState>(() => ({
+    description: typeof prompt === "string" ? prompt : "",
     sourceImage: "",
-    gridWidth: 16,
-    gridHeight: 16,
+    gridWidth: typeof width === "number" && width > 0 ? Math.round(width) : 16,
+    gridHeight: typeof height === "number" && height > 0 ? Math.round(height) : 16,
     cellSize: 10,
     difficulty: "medium",
     allowDiagonals: false,
     shards: 4,
-  })
+    useTemplate: true,
+  }))
+  const latestProps = useRef<{ prompt?: string; width?: number; height?: number }>({ prompt, width, height })
   const [jobId, setJobId] = useState<string | null>(null)
   const [status, setStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<GraphicDictationResult | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isPolling, setIsPolling] = useState(false)
+  const [localFile, setLocalFile] = useState<File | null>(null)
+  const [localPreview, setLocalPreview] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const hasResult = useMemo(() => Boolean(result?.commands?.length), [result])
+
+  useEffect(() => {
+    const changedPrompt = prompt !== latestProps.current.prompt
+    const changedWidth = width !== latestProps.current.width
+    const changedHeight = height !== latestProps.current.height
+    if (changedPrompt || changedWidth || changedHeight) {
+      setForm((prev) => ({
+        ...prev,
+        description: typeof prompt === "string" && prompt.length ? prompt : prev.description,
+        gridWidth: typeof width === "number" && width > 0 ? Math.round(width) : prev.gridWidth,
+        gridHeight: typeof height === "number" && height > 0 ? Math.round(height) : prev.gridHeight,
+      }))
+      latestProps.current = { prompt, width, height }
+    }
+  }, [prompt, width, height])
 
   const reset = useCallback(() => {
     setJobId(null)
@@ -78,27 +112,44 @@ export function GraphicDictationGenerator({ onResult }: GraphicDictationGenerato
     setError(null)
     setResult(null)
     setIsPolling(false)
-  }, [])
+    onSvgGenerated?.(null)
+  }, [onSvgGenerated])
 
   const submit = useCallback(async () => {
     setIsSubmitting(true)
-    setError(null)
     setResult(null)
     setStatus(null)
 
     try {
+      let sourceImage = form.sourceImage.trim()
+      if (localFile) {
+        const dataUrl = await fileToDataUrl(localFile)
+        sourceImage = dataUrl
+      }
+
+      // Template mode validation
+      if (form.useTemplate) {
+        if (!form.description.trim()) {
+          throw new Error("Введите описание фигуры для генерации")
+        }
+      } else if (!sourceImage) {
+        throw new Error("Добавьте изображение через URL или загрузите файл")
+      }
+
       const response = await apiFetch("/api/generator/graphic-dictation", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          source_image: form.sourceImage.trim(),
+          description: form.useTemplate ? form.description.trim() : undefined,
+          source_image: !form.useTemplate ? sourceImage : undefined,
           grid_width: Number(form.gridWidth),
           grid_height: Number(form.gridHeight),
           cell_size_mm: Number(form.cellSize),
           difficulty: form.difficulty,
           allow_diagonals: form.allowDiagonals,
+          shard: Number(form.shards),
           shards: Number(form.shards),
         }),
       })
@@ -114,10 +165,11 @@ export function GraphicDictationGenerator({ onResult }: GraphicDictationGenerato
       setIsPolling(true)
     } catch (err: any) {
       setError(err?.message || "Не удалось отправить задачу")
+      onSvgGenerated?.(null)
     } finally {
       setIsSubmitting(false)
     }
-  }, [form])
+  }, [form, localFile, onSvgGenerated])
 
   useEffect(() => {
     if (!jobId || !isPolling) {
@@ -145,6 +197,12 @@ export function GraphicDictationGenerator({ onResult }: GraphicDictationGenerato
           setResult(data.result)
           setIsPolling(false)
           onResult?.(data.result)
+          const svgUrl = data.result.preview_svg_url ?? null
+          if (svgUrl) {
+            onSvgGenerated?.(svgUrl)
+          } else {
+            onSvgGenerated?.(null)
+          }
         }
       } catch (err: any) {
         if (isCancelled) return
@@ -157,12 +215,96 @@ export function GraphicDictationGenerator({ onResult }: GraphicDictationGenerato
       isCancelled = true
       clearInterval(timer)
     }
-  }, [jobId, isPolling, onResult])
+  }, [jobId, isPolling, onResult, onSvgGenerated])
 
   const instructionsText = useMemo(() => {
     if (!result?.instructions?.length) return ""
     return result.instructions.join("\n")
   }, [result])
+
+  const clearLocalFile = useCallback(() => {
+    if (localPreview) {
+      URL.revokeObjectURL(localPreview)
+    }
+    setLocalFile(null)
+    setLocalPreview(null)
+  }, [localPreview])
+
+  useEffect(() => () => clearLocalFile(), [clearLocalFile])
+
+  const validateAndSetFile = useCallback(
+    async (file: File | undefined | null) => {
+      if (!file) {
+        return
+      }
+
+      if (!file.type.startsWith("image/")) {
+        setError("Поддерживаются только изображения")
+        return
+      }
+
+      if (file.size > 50 * 1024 * 1024) {
+        setError("Максимальный размер файла 50 МБ")
+        return
+      }
+
+      const imageUrl = URL.createObjectURL(file)
+      const img = new window.Image()
+      const loadPromise = new Promise<void>((resolve, reject) => {
+        img.onload = () => {
+          if (img.width > 1024 || img.height > 1024) {
+            reject(new Error("Максимальное разрешение 1024x1024"))
+            return
+          }
+          resolve()
+        }
+        img.onerror = () => reject(new Error("Не удалось прочитать изображение"))
+        img.src = imageUrl
+      })
+
+      try {
+        await loadPromise
+        clearLocalFile()
+        setLocalFile(file)
+        setLocalPreview(imageUrl)
+        setForm((prev) => ({ ...prev, sourceImage: `[локальный файл] ${file.name}` }))
+        setError(null)
+      } catch (validationErr: any) {
+        URL.revokeObjectURL(imageUrl)
+        setError(validationErr?.message || "Файл не принят")
+      }
+    },
+    [clearLocalFile]
+  )
+
+  const onFileInputChange = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0]
+      await validateAndSetFile(file)
+      event.target.value = ""
+    },
+    [validateAndSetFile]
+  )
+
+  const onDrop = useCallback(
+    async (event: React.DragEvent<HTMLDivElement>) => {
+      event.preventDefault()
+      event.stopPropagation()
+      const file = event.dataTransfer.files?.[0]
+      await validateAndSetFile(file)
+    },
+    [validateAndSetFile]
+  )
+
+  const onPaste = useCallback(
+    async (event: React.ClipboardEvent<HTMLDivElement>) => {
+      const file = Array.from(event.clipboardData.files).find((item) => item.type.startsWith("image/"))
+      if (file) {
+        await validateAndSetFile(file)
+      }
+    },
+    [validateAndSetFile]
+  )
 
   return (
     <Card className="border border-border">
@@ -176,18 +318,140 @@ export function GraphicDictationGenerator({ onResult }: GraphicDictationGenerato
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="md:col-span-2 space-y-3">
-            <Label htmlFor="gd-source">URL исходного изображения</Label>
-            <Input
-              id="gd-source"
-              placeholder="Например: /storage/images/sample.png"
-              value={form.sourceImage}
-              onChange={(e) => setForm((prev) => ({ ...prev, sourceImage: e.target.value }))}
-            />
-            <p className="text-xs text-muted-foreground">
-              Изображение должно быть доступно серверу. Используйте путь до файла или прямой URL.
-            </p>
+        {/* Mode Toggle */}
+        <div className="flex items-center gap-4 p-4 bg-muted/20 rounded-md">
+          <Label htmlFor="gd-mode-toggle" className="text-sm font-medium">
+            Режим генерации:
+          </Label>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant={form.useTemplate ? "default" : "outline"}
+              size="sm"
+              onClick={() => setForm((prev) => ({ ...prev, useTemplate: true }))}
+            >
+              По описанию
+            </Button>
+            <Button
+              type="button"
+              variant={!form.useTemplate ? "default" : "outline"}
+              size="sm"
+              onClick={() => setForm((prev) => ({ ...prev, useTemplate: false }))}
+            >
+              Из изображения
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2 space-y-3">
+            {form.useTemplate ? (
+              // Template mode: description input
+              <>
+                <Label htmlFor="gd-description">Описание фигуры</Label>
+                <Textarea
+                  id="gd-description"
+                  placeholder="Например: домик, машинка, робот, ёлка, собачка, бетономешалка..."
+                  value={form.description}
+                  onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+                  rows={3}
+                  disabled={isSubmitting}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Введите название фигуры или описание того, что хотите нарисовать. 
+                  Доступны готовые шаблоны (домик, дерево, машинка, робот, собачка, кошка) 
+                  или AI создаст новую фигуру по вашему описанию.
+                </p>
+              </>
+            ) : (
+              // Image mode: file upload
+              <>
+                <Label htmlFor="gd-source">Источник изображения</Label>
+                <Input
+                  id="gd-source"
+                  placeholder="URL или локальный файл"
+                  value={form.sourceImage}
+                  onChange={(e) => {
+                    clearLocalFile()
+                    setForm((prev) => ({ ...prev, sourceImage: e.target.value }))
+                  }}
+                  disabled={isSubmitting}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Можно указать URL, путь до файла на сервере или загрузить изображение (drag & drop / Ctrl+V).
+                  Поддерживаемые файлы ≤ 1024×1024 и до 50 МБ.
+                </p>
+              </>
+            )}
+            {!form.useTemplate && (
+              <div
+                onDragOver={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                }}
+                onDragEnter={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                }}
+                onDrop={onDrop}
+                onPaste={onPaste}
+                className={cn(
+                  "flex flex-col items-center justify-center rounded-md border border-dashed border-border bg-muted/20 px-4 py-6 text-center transition" ,
+                  "hover:border-primary/60 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                )}
+                role="button"
+                tabIndex={0}
+              >
+              <Upload className="mb-3 h-6 w-6 text-muted-foreground" />
+              <p className="text-sm font-medium">Перетащите изображение или выберите файл</p>
+              <p className="mt-1 text-xs text-muted-foreground">Поддерживаются PNG, JPEG, WEBP. До 1024×1024, 50 МБ.</p>
+              <div className="mt-4 flex flex-wrap justify-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isSubmitting}
+                >
+                  Выбрать файл
+                </Button>
+                {localFile && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      clearLocalFile()
+                      setForm((prev) => ({ ...prev, sourceImage: "" }))
+                    }}
+                  >
+                    Удалить файл
+                  </Button>
+                )}
+              </div>
+              {localFile && (
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Выбрано: {localFile.name} ({Math.round(localFile.size / 1024)} КБ)
+                </p>
+              )}
+              </div>
+            )}
+            {!form.useTemplate && (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={onFileInputChange}
+                />
+                {localPreview && (
+                  <div className="relative mt-3 h-48 overflow-hidden rounded-md border border-border bg-background">
+                    <NextImage src={localPreview} alt="Превью локального файла" fill className="object-contain" />
+                  </div>
+                )}
+              </>
+            )}
           </div>
           <div className="space-y-3">
             <Label htmlFor="gd-shards">Шардов</Label>
@@ -258,10 +522,12 @@ export function GraphicDictationGenerator({ onResult }: GraphicDictationGenerato
             <Label htmlFor="gd-diagonals">Разрешить диагональные шаги</Label>
             <p className="text-xs text-muted-foreground">Включает диагональные движения в инструкции диктанта</p>
           </div>
-          <Switch
+          <input
             id="gd-diagonals"
+            type="checkbox"
+            className="h-5 w-5 cursor-pointer rounded border border-border text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             checked={form.allowDiagonals}
-            onCheckedChange={(checked) => setForm((prev) => ({ ...prev, allowDiagonals: checked }))}
+            onChange={(event) => setForm((prev) => ({ ...prev, allowDiagonals: event.target.checked }))}
           />
         </div>
 
@@ -272,7 +538,13 @@ export function GraphicDictationGenerator({ onResult }: GraphicDictationGenerato
         )}
 
         <div className="flex flex-wrap gap-3">
-          <Button onClick={submit} disabled={isSubmitting || !form.sourceImage.trim()}>
+          <Button 
+            onClick={submit} 
+            disabled={
+              isSubmitting || 
+              (form.useTemplate ? !form.description.trim() : (!form.sourceImage.trim() && !localFile))
+            }
+          >
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -325,7 +597,7 @@ export function GraphicDictationGenerator({ onResult }: GraphicDictationGenerato
                 )}
                 {!result.preview_svg_url && result.preview_image_url && (
                   <div className="relative h-80 overflow-hidden rounded-md border border-border bg-white">
-                    <Image
+                    <NextImage
                       src={result.preview_image_url}
                       alt="Превью графического диктанта"
                       fill
