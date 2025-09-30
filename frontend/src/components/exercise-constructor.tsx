@@ -37,17 +37,15 @@ type ListSettingsPayload = {
   hidden: string[]
 }
 
+type PreferenceSet = {
+  favorites: string[]
+  hidden: string[]
+  order: string[]
+}
+
 type ConstructorPreferences = {
-  categories: {
-    favorites: string[]
-    hidden: string[]
-    order: string[]
-  }
-  exercises: {
-    favorites: string[]
-    hidden: string[]
-    order: string[]
-  }
+  categories: PreferenceSet
+  types: PreferenceSet
 }
 
 const PREFERENCES_STORAGE_KEY = 'exercise-constructor:preferences'
@@ -63,7 +61,15 @@ interface TypeCardProps {
 }
 
 const TypeCard: React.FC<TypeCardProps> = ({ typeItem, isActive, isFavorite, isHidden, onSelect, onToggleFavorite, onToggleVisibility }) => {
+  const isSelectable = !isHidden || isActive
+
+  const handleSelect = () => {
+    if (!isSelectable) return
+    onSelect()
+  }
+
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!isSelectable) return
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
       onSelect()
@@ -73,62 +79,81 @@ const TypeCard: React.FC<TypeCardProps> = ({ typeItem, isActive, isFavorite, isH
   return (
     <div
       role="button"
-      tabIndex={0}
+      tabIndex={isSelectable ? 0 : -1}
       aria-pressed={isActive}
-      onClick={onSelect}
+      aria-disabled={!isSelectable}
+      onClick={handleSelect}
       onKeyDown={handleKeyDown}
       className={cn(
-        'relative flex h-full cursor-pointer flex-col gap-2 rounded-lg border p-3 text-left outline-none transition-colors focus:ring-2 focus:ring-primary/40',
+        'relative flex h-full flex-col gap-2 rounded-lg border p-3 text-left outline-none transition-colors focus:ring-2 focus:ring-primary/40',
+        isSelectable ? 'cursor-pointer' : 'cursor-not-allowed',
         isActive
           ? 'border-primary bg-primary/10 text-primary'
           : 'border-border bg-muted text-foreground/90 hover:bg-muted/70',
         isHidden && !isActive ? 'opacity-60' : undefined
       )}
     >
-      <button
-        type="button"
-        aria-label={isFavorite ? 'Убрать из избранного' : 'Добавить в избранное'}
-        className={cn(
-          'absolute right-2 top-2 rounded-full border border-transparent p-1 transition-colors',
-          isFavorite ? 'bg-primary text-primary-foreground' : 'bg-muted/60 text-muted-foreground hover:bg-muted'
-        )}
-        onClick={(event) => {
-          event.stopPropagation()
-          onToggleFavorite()
-        }}
-      >
-        {isFavorite ? <Star className="h-4 w-4 fill-current" /> : <StarOff className="h-4 w-4" />}
-      </button>
-      {onToggleVisibility && (
+      <div className="absolute right-2 top-2 flex gap-1">
         <button
           type="button"
-          aria-label={isHidden ? 'Показать упражнение' : 'Скрыть упражнение'}
+          aria-label={isFavorite ? 'Убрать из избранного' : 'Добавить в избранное'}
           className={cn(
-            'absolute left-2 top-2 rounded-full border border-transparent p-1 transition-colors',
-            isHidden ? 'bg-muted text-muted-foreground hover:bg-muted/80' : 'bg-muted/60 text-muted-foreground hover:bg-muted'
+            'rounded-full border border-transparent p-1 transition-colors',
+            isFavorite ? 'bg-primary text-primary-foreground' : 'bg-muted/60 text-muted-foreground hover:bg-muted'
           )}
           onClick={(event) => {
             event.stopPropagation()
-            onToggleVisibility()
+            onToggleFavorite()
           }}
         >
-          {isHidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          {isFavorite ? <Star className="h-4 w-4 fill-current" /> : <StarOff className="h-4 w-4" />}
         </button>
-      )}
+        {onToggleVisibility && (
+          <button
+            type="button"
+            aria-label={isHidden ? 'Показать упражнение' : 'Скрыть упражнение'}
+            className={cn(
+              'rounded-full border border-transparent p-1 transition-colors',
+              isHidden ? 'bg-muted text-muted-foreground hover:bg-muted/80' : 'bg-muted/60 text-muted-foreground hover:bg-muted'
+            )}
+            onClick={(event) => {
+              event.stopPropagation()
+              onToggleVisibility()
+            }}
+          >
+            {isHidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+          </button>
+        )}
+      </div>
+
       <div className="flex items-start gap-2">
         <span className="text-lg leading-none" aria-hidden="true">
           {typeItem.icon || '📘'}
         </span>
         <div className="flex-1">
-          <div className="text-sm font-medium">{typeItem.name}</div>
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <span>{typeItem.name}</span>
+            {isHidden && !isActive && (
+              <span className="flex items-center gap-1 rounded-full bg-muted/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <EyeOff className="h-3 w-3" /> Скрыто
+              </span>
+            )}
+          </div>
           {typeItem.description && (
             <div className="text-xs text-muted-foreground/90 line-clamp-2">{typeItem.description}</div>
           )}
         </div>
       </div>
+
       <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
         {normalizeDomain(typeItem.domain)}
       </div>
+
+      {!isSelectable && (
+        <div className="rounded border border-dashed border-border/60 bg-background/80 p-2 text-xs text-muted-foreground">
+          Тип скрыт. Покажите его в настройках, чтобы использовать.
+        </div>
+      )}
     </div>
   )
 }
@@ -138,7 +163,7 @@ interface CategorySettingsDialogProps {
   initialOrder: string[]
   hiddenCategories: string[]
   onCancel: () => void
-  onApply: (payload: TypeSettingsPayload) => void
+  onApply: (payload: ListSettingsPayload) => void
 }
 
 const CategorySettingsDialog: React.FC<CategorySettingsDialogProps> = ({ categories, initialOrder, hiddenCategories, onCancel, onApply }) => {
@@ -264,6 +289,176 @@ const CategorySettingsDialog: React.FC<CategorySettingsDialogProps> = ({ categor
   )
 }
 
+interface TypeSettingsDialogProps {
+  types: ExerciseTypeInfo[]
+  favorites: string[]
+  hidden: string[]
+  order: string[]
+  onCancel: () => void
+  onApply: (payload: PreferenceSet) => void
+}
+
+const TypeSettingsDialog: React.FC<TypeSettingsDialogProps> = ({ types, favorites, hidden, order, onCancel, onApply }) => {
+  const [orderState, setOrderState] = React.useState<string[]>(order)
+  const [hiddenState, setHiddenState] = React.useState<string[]>(hidden)
+  const [favoriteState, setFavoriteState] = React.useState<string[]>(favorites)
+
+  React.useEffect(() => {
+    const sanitizedOrder = order.filter((key) => types.some((item) => item.key === key))
+    const allKeys = types.map((item) => item.key)
+    const merged = Array.from(new Set([...sanitizedOrder, ...allKeys]))
+    setOrderState(merged)
+  }, [order, types])
+
+  React.useEffect(() => {
+    setHiddenState(hidden.filter((key) => types.some((item) => item.key === key)))
+  }, [hidden, types])
+
+  React.useEffect(() => {
+    setFavoriteState(favorites.filter((key) => types.some((item) => item.key === key)))
+  }, [favorites, types])
+
+  const moveType = (index: number, direction: -1 | 1) => {
+    setOrderState((prev) => {
+      const next = [...prev]
+      const targetIndex = index + direction
+      if (targetIndex < 0 || targetIndex >= next.length) return prev
+      const [item] = next.splice(index, 1)
+      next.splice(targetIndex, 0, item)
+      return next
+    })
+  }
+
+  const toggleHidden = (key: string) => {
+    setHiddenState((prev) => (prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]))
+  }
+
+  const toggleFavorite = (key: string) => {
+    setFavoriteState((prev) => (prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]))
+  }
+
+  const handleApply = () => {
+    const payload: PreferenceSet = {
+      favorites: favoriteState,
+      hidden: hiddenState,
+      order: orderState,
+    }
+    onApply(payload)
+  }
+
+  const typeMap = React.useMemo(() => {
+    return types.reduce<Record<string, ExerciseTypeInfo>>((acc, item) => {
+      acc[item.key] = item
+      return acc
+    }, {})
+  }, [types])
+
+  const visibleKeys = orderState.filter((key) => typeMap[key])
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm">
+      <div className="w-full max-w-2xl space-y-4 rounded-lg border border-border bg-card p-4 shadow-xl">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-lg font-semibold">Настроить типы упражнений</div>
+            <div className="text-xs text-muted-foreground">Управляйте порядком, избранным и видимостью типов</div>
+          </div>
+          <Button variant="ghost" size="icon" onClick={onCancel} aria-label="Закрыть настройки">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="max-h-96 space-y-2 overflow-y-auto rounded-lg border border-border bg-muted/20 p-2">
+          {visibleKeys.length === 0 ? (
+            <div className="rounded border border-dashed border-border bg-muted/40 p-4 text-sm text-muted-foreground">
+              Нет доступных типов.
+            </div>
+          ) : (
+            visibleKeys.map((key, index) => {
+              const item = typeMap[key]
+              if (!item) return null
+              const isHidden = hiddenState.includes(key)
+              const isFavorite = favoriteState.includes(key)
+              return (
+                <div key={key} className="flex items-center justify-between rounded border border-border bg-background/80 px-3 py-2 text-sm">
+                  <div className="flex flex-col">
+                    <span className="font-medium">{item.name}</span>
+                    <span className="text-xs text-muted-foreground">{normalizeDomain(item.domain)}</span>
+                    <span className="text-xs text-muted-foreground/80">{isHidden ? 'Скрыт' : 'Отображается'} · {isFavorite ? 'Избранный' : 'Обычный'}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => moveType(index, -1)}
+                      disabled={index === 0}
+                      aria-label="Переместить вверх"
+                    >
+                      <ArrowUp className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => moveType(index, 1)}
+                      disabled={index === visibleKeys.length - 1}
+                      aria-label="Переместить вниз"
+                    >
+                      <ArrowDown className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => toggleFavorite(key)}
+                    >
+                      {isFavorite ? (
+                        <>
+                          <Star className="mr-2 h-4 w-4 fill-current" /> Убрать из избранного
+                        </>
+                      ) : (
+                        <>
+                          <StarOff className="mr-2 h-4 w-4" /> В избранное
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => toggleHidden(key)}
+                    >
+                      {isHidden ? (
+                        <>
+                          <Eye className="mr-2 h-4 w-4" /> Показать
+                        </>
+                      ) : (
+                        <>
+                          <EyeOff className="mr-2 h-4 w-4" /> Скрыть
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={onCancel}>
+            Отмена
+          </Button>
+          <Button onClick={handleApply}>
+            Применить
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 interface ExerciseDraft {
   title: string
   type: string
@@ -300,11 +495,14 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
   const [newInstruction, setNewInstruction] = React.useState('')
   const [hiddenCategories, setHiddenCategories] = React.useState<string[]>([])
   const [categoryOrder, setCategoryOrder] = React.useState<string[]>([])
-  const [favoriteExercises, setFavoriteExercises] = React.useState<string[]>([])
+  const [favoriteTypeKeys, setFavoriteTypeKeys] = React.useState<string[]>([])
+  const [hiddenTypeKeys, setHiddenTypeKeys] = React.useState<string[]>([])
+  const [typeOrder, setTypeOrder] = React.useState<string[]>([])
+  const [favoriteExerciseKeys, setFavoriteExerciseKeys] = React.useState<string[]>([])
   const [hiddenExerciseKeys, setHiddenExerciseKeys] = React.useState<string[]>([])
   const [exerciseOrder, setExerciseOrder] = React.useState<string[]>([])
+  const [categorySettingsOpen, setCategorySettingsOpen] = React.useState(false)
   const [typeSettingsOpen, setTypeSettingsOpen] = React.useState(false)
-  const [exerciseSettingsOpen, setExerciseSettingsOpen] = React.useState(false)
   const [preferencesLoaded, setPreferencesLoaded] = React.useState(false)
   const [graphicDictationResult, setGraphicDictationResult] = React.useState<GraphicDictationResult | null>(null)
   const [currentStep, setCurrentStep] = React.useState<ConstructorStepId>('type')
@@ -360,7 +558,13 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
         const availableKeys = new Set(items.map((item) => item.key))
         const availableDomains = Array.from(new Set(items.map((item) => item.domain)))
         setAllTypes(items)
-        setFavoriteExercises(prev => prev.filter((key) => availableKeys.has(key)))
+        setFavoriteTypeKeys(prev => prev.filter((key) => availableKeys.has(key)))
+        setHiddenTypeKeys(prev => prev.filter((key) => availableKeys.has(key)))
+        setTypeOrder(prev => {
+          const sanitized = prev.filter((key) => availableKeys.has(key))
+          const missing = items.map((item) => item.key).filter((key) => !sanitized.includes(key))
+          return [...sanitized, ...missing]
+        })
         setHiddenCategories(prev => prev.filter((domain) => availableDomains.includes(domain)))
         setCategoryOrder(prev => prev.filter((domain) => availableDomains.includes(domain)))
       } catch (e:any) {
@@ -384,10 +588,13 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
         setCategoryOrder(Array.isArray(parsed.categories.order) ? parsed.categories.order : [])
         setHiddenCategories(Array.isArray(parsed.categories.hidden) ? parsed.categories.hidden : [])
       }
-      if (parsed?.exercises) {
-        setFavoriteExercises(Array.isArray(parsed.exercises.favorites) ? parsed.exercises.favorites : [])
-        setHiddenExerciseKeys(Array.isArray(parsed.exercises.hidden) ? parsed.exercises.hidden : [])
-        setExerciseOrder(Array.isArray(parsed.exercises.order) ? parsed.exercises.order : [])
+      if (parsed?.types) {
+        setFavoriteTypeKeys(Array.isArray(parsed.types.favorites) ? parsed.types.favorites : [])
+        setHiddenTypeKeys(Array.isArray(parsed.types.hidden) ? parsed.types.hidden : [])
+        setTypeOrder(Array.isArray(parsed.types.order) ? parsed.types.order : [])
+      }
+      if (parsed?.types) {
+        // future exercise preferences loading placeholder
       }
     } catch (error) {
       // ignore malformed preferences
@@ -404,10 +611,10 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
         hidden: hiddenCategories,
         order: categoryOrder,
       },
-      exercises: {
-        favorites: favoriteExercises,
-        hidden: hiddenExerciseKeys,
-        order: exerciseOrder,
+      types: {
+        favorites: favoriteTypeKeys,
+        hidden: hiddenTypeKeys,
+        order: typeOrder,
       },
     }
     try {
@@ -415,7 +622,7 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
     } catch (error) {
       // ignore storage errors
     }
-  }, [preferencesLoaded, hiddenCategories, categoryOrder, favoriteExercises, hiddenExerciseKeys, exerciseOrder])
+  }, [preferencesLoaded, hiddenCategories, categoryOrder, favoriteTypeKeys, hiddenTypeKeys, typeOrder])
 
   const addInstruction = () => {
     const value = newInstruction.trim()
@@ -476,20 +683,33 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
     })
   }, [allTypes, typeSearch])
 
+  const visibleFavoriteTypeKeys = React.useMemo(() => {
+    return favoriteTypeKeys.filter((key) => !hiddenTypeKeys.includes(key) || key === draft.type)
+  }, [favoriteTypeKeys, hiddenTypeKeys, draft.type])
+
+  const visibleFilteredTypes = React.useMemo(() => {
+    const favoriteSet = new Set(visibleFavoriteTypeKeys)
+    return filteredTypes.filter((item) => {
+      if (hiddenTypeKeys.includes(item.key) && item.key !== draft.type) return false
+      if (favoriteSet.has(item.key) && item.key !== draft.type) return false
+      return true
+    })
+  }, [filteredTypes, hiddenTypeKeys, draft.type, visibleFavoriteTypeKeys])
+
   const typesByDomain = React.useMemo(() => {
-    return filteredTypes.reduce<Record<string, Array<typeof filteredTypes[number]>>>((acc, item) => {
+    return visibleFilteredTypes.reduce<Record<string, Array<typeof visibleFilteredTypes[number]>>>((acc, item) => {
       const domain = normalizeDomain(item.domain)
       if (!acc[domain]) acc[domain] = []
       acc[domain].push(item)
       return acc
     }, {})
-  }, [filteredTypes])
+  }, [visibleFilteredTypes])
 
   const allDomains = React.useMemo(() => {
     const set = new Set<string>()
-    allTypes.forEach((item) => set.add(normalizeDomain(item.domain)))
+    visibleFilteredTypes.forEach((item) => set.add(normalizeDomain(item.domain)))
     return Array.from(set)
-  }, [allTypes])
+  }, [visibleFilteredTypes])
 
   const normalizedOrder = React.useMemo(() => {
     if (!categoryOrder.length) return null
@@ -511,8 +731,12 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
   const currentStepIndex = React.useMemo(() => CONSTRUCTOR_STEPS.findIndex((step) => step.id === currentStep), [currentStep])
   const selectedTypeMeta = React.useMemo(() => allTypes.find((item) => item.key === draft.type) || null, [allTypes, draft.type])
 
-  const toggleFavoriteExercise = React.useCallback((key: string) => {
-    setFavoriteExercises((prev) => (prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]))
+  const toggleFavoriteType = React.useCallback((key: string) => {
+    setFavoriteTypeKeys((prev) => (prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]))
+  }, [])
+
+  const toggleTypeVisibility = React.useCallback((key: string) => {
+    setHiddenTypeKeys((prev) => (prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]))
   }, [])
 
   const toggleCategoryVisibility = React.useCallback((domain: string) => {
@@ -523,10 +747,14 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
     return Array.from(new Set([...allDomains, ...sortedDomainKeys]))
   }, [allDomains, sortedDomainKeys])
 
+  const typeOrderMap = React.useMemo(() => {
+    return new Map(typeOrder.map((key, idx) => [key, idx]))
+  }, [typeOrder])
+
   return (
     <div className="w-full space-y-6">
       <Card className="bg-card border border-border">
-          <CardHeader>
+        <CardHeader>
             <CardTitle>Конструктор упражнения</CardTitle>
             <CardDescription>
               Сформируйте упражнение вручную: тип, сложность, инструкции и контентные блоки
@@ -577,20 +805,29 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
                         onChange={(e) => setTypeSearch(e.target.value)}
                         className="w-64"
                       />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setTypeSettingsOpen(true)}
-                      >
-                        <Settings2 className="mr-2 h-4 w-4" />
-                        Настроить список
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setTypeSettingsOpen(true)}
+                        >
+                          <Settings2 className="mr-2 h-4 w-4" /> Настройка типов
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCategorySettingsOpen(true)}
+                        >
+                          <Settings2 className="mr-2 h-4 w-4" /> Настройка категорий
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                  {favoriteExercises.length > 0 && (
+                  {visibleFavoriteTypeKeys.length > 0 && (
                     <div className="text-xs text-muted-foreground">
-                      Закреплено: {favoriteExercises.length}
+                      Закреплено: {visibleFavoriteTypeKeys.length}
                     </div>
                   )}
                 </div>
@@ -599,11 +836,16 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
                   <div className="text-sm text-muted-foreground">Загрузка типов…</div>
                 ) : (
                   <div className="space-y-4">
-                    {favoriteExercises.length > 0 && (
-                      <div className="space-y-2">
-                        <div className="text-xs uppercase font-semibold text-muted-foreground">Избранное</div>
+                    {visibleFavoriteTypeKeys.length > 0 && (
+                      <div className="space-y-2 rounded-lg border border-border bg-card/60 p-3">
+                        <div className="flex items-center justify-between text-xs uppercase font-semibold text-muted-foreground">
+                          <span>Избранное</span>
+                          <span className="text-[11px] font-normal lowercase tracking-wide text-muted-foreground/80">
+                            {visibleFavoriteTypeKeys.length}
+                          </span>
+                        </div>
                         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                          {favoriteExercises
+                          {visibleFavoriteTypeKeys
                             .map((favKey) => allTypes.find((item) => item.key === favKey))
                             .filter(Boolean)
                             .map((fav) => (
@@ -613,7 +855,7 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
                                 isActive={draft.type === fav!.key}
                                 isFavorite
                                 onSelect={() => setDraft((prev) => ({ ...prev, type: fav!.key }))}
-                                onToggleFavorite={() => toggleFavoriteExercise(fav!.key)}
+                                onToggleFavorite={() => toggleFavoriteType(fav!.key)}
                               />
                             ))}
                         </div>
@@ -628,6 +870,36 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
                           const isHidden = hiddenCategories.includes(domain)
                           const items = typesByDomain[domain] ?? []
                           if (!items.length && !typeSearch) return null
+                          const orderedItems = [...items].sort((a, b) => {
+                            const idxA = typeOrderMap.get(a.key) ?? Number.MAX_SAFE_INTEGER
+                            const idxB = typeOrderMap.get(b.key) ?? Number.MAX_SAFE_INTEGER
+                            if (idxA === idxB) return a.name.localeCompare(b.name)
+                            return idxA - idxB
+                          })
+                          const visibleItems = orderedItems.filter((opt) => !hiddenTypeKeys.includes(opt.key) || opt.key === draft.type)
+                          if (!visibleItems.length) {
+                            if (typeSearch) return null
+                            return (
+                              <div key={domain} className="space-y-2">
+                                <div className="flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground font-medium">
+                                  <span>{domain}</span>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-muted-foreground"
+                                    onClick={() => toggleCategoryVisibility(domain)}
+                                    aria-label={isHidden ? 'Показать категорию' : 'Скрыть категорию'}
+                                  >
+                                    {isHidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                  </Button>
+                                </div>
+                                <div className="rounded border border-dashed border-border bg-muted/40 p-2 text-xs text-muted-foreground">
+                                  Нет видимых типов. Отредактируйте настройки.
+                                </div>
+                              </div>
+                            )
+                          }
                           return (
                             <div key={domain} className="space-y-2">
                               <div className="flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground font-medium">
@@ -649,14 +921,16 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
                                 </div>
                               ) : (
                                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                                  {items.map((opt) => (
+                                  {visibleItems.map((opt) => (
                                     <TypeCard
                                       key={opt.key}
                                       typeItem={opt}
                                       isActive={draft.type === opt.key}
-                                      isFavorite={favoriteExercises.includes(opt.key)}
+                                      isFavorite={favoriteTypeKeys.includes(opt.key)}
+                                      isHidden={hiddenTypeKeys.includes(opt.key)}
                                       onSelect={() => setDraft((prev) => ({ ...prev, type: opt.key }))}
-                                      onToggleFavorite={() => toggleFavoriteExercise(opt.key)}
+                                      onToggleFavorite={() => toggleFavoriteType(opt.key)}
+                                      onToggleVisibility={() => toggleTypeVisibility(opt.key)}
                                     />
                                   ))}
                                 </div>
@@ -674,15 +948,30 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
                   </Button>
                 </div>
 
-                {typeSettingsOpen && (
+                {categorySettingsOpen && (
                   <CategorySettingsDialog
                     categories={categoriesForSettings}
                     initialOrder={categoryOrder}
                     hiddenCategories={hiddenCategories}
-                    onCancel={() => setTypeSettingsOpen(false)}
+                    onCancel={() => setCategorySettingsOpen(false)}
                     onApply={(payload: ListSettingsPayload) => {
                       setCategoryOrder(payload.order)
                       setHiddenCategories(payload.hidden)
+                      setCategorySettingsOpen(false)
+                    }}
+                  />
+                )}
+                {typeSettingsOpen && (
+                  <TypeSettingsDialog
+                    types={allTypes}
+                    favorites={favoriteTypeKeys}
+                    hidden={hiddenTypeKeys}
+                    order={typeOrder}
+                    onCancel={() => setTypeSettingsOpen(false)}
+                    onApply={(payload) => {
+                      setFavoriteTypeKeys(payload.favorites)
+                      setHiddenTypeKeys(payload.hidden)
+                      setTypeOrder(payload.order)
                       setTypeSettingsOpen(false)
                     }}
                   />
