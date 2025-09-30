@@ -9,7 +9,7 @@ import { useI18n } from '@/components/localization'
 import { apiFetch } from '@/lib/api'
 import { GraphicDictationGenerator } from '@/components/graphic-dictation-generator'
 import type { GraphicDictationResult } from '@/components/graphic-dictation/types'
-import { Star, StarOff, Settings2, ArrowUp, ArrowDown, Eye, EyeOff, X } from 'lucide-react'
+import { Star, StarOff, Settings2, ArrowRight, ArrowUp, ArrowDown, Eye, EyeOff, X } from 'lucide-react'
 
 const CONSTRUCTOR_STEPS = [
   { id: 'type', label: 'Выбор типа', description: 'Определите формат и сценарий упражнения' },
@@ -58,9 +58,10 @@ interface TypeCardProps {
   onSelect: () => void
   onToggleFavorite: () => void
   onToggleVisibility?: () => void
+  onOpenEditor?: () => void
 }
 
-const TypeCard: React.FC<TypeCardProps> = ({ typeItem, isActive, isFavorite, isHidden, onSelect, onToggleFavorite, onToggleVisibility }) => {
+const TypeCard: React.FC<TypeCardProps> = ({ typeItem, isActive, isFavorite, isHidden, onSelect, onToggleFavorite, onToggleVisibility, onOpenEditor }) => {
   const isSelectable = !isHidden || isActive
 
   const handleSelect = () => {
@@ -122,6 +123,19 @@ const TypeCard: React.FC<TypeCardProps> = ({ typeItem, isActive, isFavorite, isH
             }}
           >
             {isHidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+          </button>
+        )}
+        {onOpenEditor && (
+          <button
+            type="button"
+            aria-label="Перейти к настройке упражнения"
+            className="rounded-full border border-transparent p-1 transition-colors bg-muted/60 text-muted-foreground hover:bg-muted"
+            onClick={(event) => {
+              event.stopPropagation()
+              onOpenEditor()
+            }}
+          >
+            <ArrowRight className="h-4 w-4" strokeWidth={3} />
           </button>
         )}
       </div>
@@ -294,14 +308,17 @@ interface TypeSettingsDialogProps {
   favorites: string[]
   hidden: string[]
   order: string[]
+  initialKey?: string | null
   onCancel: () => void
   onApply: (payload: PreferenceSet) => void
 }
 
-const TypeSettingsDialog: React.FC<TypeSettingsDialogProps> = ({ types, favorites, hidden, order, onCancel, onApply }) => {
+const TypeSettingsDialog: React.FC<TypeSettingsDialogProps> = ({ types, favorites, hidden, order, initialKey, onCancel, onApply }) => {
   const [orderState, setOrderState] = React.useState<string[]>(order)
   const [hiddenState, setHiddenState] = React.useState<string[]>(hidden)
   const [favoriteState, setFavoriteState] = React.useState<string[]>(favorites)
+  const [selectedKey, setSelectedKey] = React.useState<string | null>(initialKey ?? null)
+  const listRef = React.useRef<HTMLDivElement | null>(null)
 
   React.useEffect(() => {
     const sanitizedOrder = order.filter((key) => types.some((item) => item.key === key))
@@ -317,6 +334,15 @@ const TypeSettingsDialog: React.FC<TypeSettingsDialogProps> = ({ types, favorite
   React.useEffect(() => {
     setFavoriteState(favorites.filter((key) => types.some((item) => item.key === key)))
   }, [favorites, types])
+
+  React.useEffect(() => {
+    if (!initialKey) return
+    setSelectedKey(initialKey)
+    requestAnimationFrame(() => {
+      const node = listRef.current?.querySelector<HTMLElement>(`[data-type-key="${initialKey}"]`)
+      node?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    })
+  }, [initialKey])
 
   const moveType = (index: number, direction: -1 | 1) => {
     setOrderState((prev) => {
@@ -353,7 +379,15 @@ const TypeSettingsDialog: React.FC<TypeSettingsDialogProps> = ({ types, favorite
     }, {})
   }, [types])
 
-  const visibleKeys = orderState.filter((key) => typeMap[key])
+  const visibleKeys = React.useMemo(() => {
+    return orderState.filter((key) => typeMap[key])
+  }, [orderState, typeMap])
+
+  const displayKeys = React.useMemo(() => {
+    const hiddenKeys = visibleKeys.filter((key) => hiddenState.includes(key))
+    const shownKeys = visibleKeys.filter((key) => !hiddenState.includes(key))
+    return [...hiddenKeys, ...shownKeys]
+  }, [visibleKeys, hiddenState])
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm">
@@ -368,19 +402,36 @@ const TypeSettingsDialog: React.FC<TypeSettingsDialogProps> = ({ types, favorite
           </Button>
         </div>
 
-        <div className="max-h-96 space-y-2 overflow-y-auto rounded-lg border border-border bg-muted/20 p-2">
+        <div ref={listRef} className="max-h-96 space-y-2 overflow-y-auto rounded-lg border border-border bg-muted/20 p-2">
           {visibleKeys.length === 0 ? (
             <div className="rounded border border-dashed border-border bg-muted/40 p-4 text-sm text-muted-foreground">
               Нет доступных типов.
             </div>
           ) : (
-            visibleKeys.map((key, index) => {
+            displayKeys.map((key) => {
               const item = typeMap[key]
               if (!item) return null
               const isHidden = hiddenState.includes(key)
               const isFavorite = favoriteState.includes(key)
+              const index = visibleKeys.indexOf(key)
               return (
-                <div key={key} className="flex items-center justify-between rounded border border-border bg-background/80 px-3 py-2 text-sm">
+                <div
+                  key={key}
+                  data-type-key={key}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedKey(key)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      setSelectedKey(key)
+                    }
+                  }}
+                  className={cn(
+                    'flex items-center justify-between rounded border px-3 py-2 text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+                    selectedKey === key ? 'border-primary bg-primary/5 text-primary' : 'border-border bg-background/80'
+                  )}
+                >
                   <div className="flex flex-col">
                     <span className="font-medium">{item.name}</span>
                     <span className="text-xs text-muted-foreground">{normalizeDomain(item.domain)}</span>
@@ -504,6 +555,7 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
   const [categorySettingsOpen, setCategorySettingsOpen] = React.useState(false)
   const [typeSettingsOpen, setTypeSettingsOpen] = React.useState(false)
   const [preferencesLoaded, setPreferencesLoaded] = React.useState(false)
+  const [typeSettingsInitialKey, setTypeSettingsInitialKey] = React.useState<string | null>(null)
   const [graphicDictationResult, setGraphicDictationResult] = React.useState<GraphicDictationResult | null>(null)
   const [currentStep, setCurrentStep] = React.useState<ConstructorStepId>('type')
   const [saveLoading, setSaveLoading] = React.useState(false)
@@ -739,6 +791,11 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
     setHiddenTypeKeys((prev) => (prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]))
   }, [])
 
+  const jumpToConfigureStep = React.useCallback((key: string) => {
+    setDraft((prev) => ({ ...prev, type: key }))
+    setCurrentStep('configure')
+  }, [])
+
   const toggleCategoryVisibility = React.useCallback((domain: string) => {
     setHiddenCategories((prev) => (prev.includes(domain) ? prev.filter((item) => item !== domain) : [...prev, domain]))
   }, [])
@@ -856,6 +913,7 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
                                 isFavorite
                                 onSelect={() => setDraft((prev) => ({ ...prev, type: fav!.key }))}
                                 onToggleFavorite={() => toggleFavoriteType(fav!.key)}
+                                onOpenEditor={() => jumpToConfigureStep(fav!.key)}
                               />
                             ))}
                         </div>
@@ -931,6 +989,7 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
                                       onSelect={() => setDraft((prev) => ({ ...prev, type: opt.key }))}
                                       onToggleFavorite={() => toggleFavoriteType(opt.key)}
                                       onToggleVisibility={() => toggleTypeVisibility(opt.key)}
+                                      onOpenEditor={() => jumpToConfigureStep(opt.key)}
                                     />
                                   ))}
                                 </div>
@@ -967,12 +1026,17 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
                     favorites={favoriteTypeKeys}
                     hidden={hiddenTypeKeys}
                     order={typeOrder}
-                    onCancel={() => setTypeSettingsOpen(false)}
+                    initialKey={typeSettingsInitialKey}
+                    onCancel={() => {
+                      setTypeSettingsOpen(false)
+                      setTypeSettingsInitialKey(null)
+                    }}
                     onApply={(payload) => {
                       setFavoriteTypeKeys(payload.favorites)
                       setHiddenTypeKeys(payload.hidden)
                       setTypeOrder(payload.order)
                       setTypeSettingsOpen(false)
+                      setTypeSettingsInitialKey(null)
                     }}
                   />
                 )}
