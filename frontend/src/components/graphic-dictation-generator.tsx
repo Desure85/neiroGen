@@ -32,6 +32,7 @@ interface GraphicDictationGeneratorProps {
 
 interface FormState {
   description: string
+  shapeName: string
   sourceImage: string
   gridWidth: number
   gridHeight: number
@@ -40,6 +41,19 @@ interface FormState {
   allowDiagonals: boolean
   shards: number
   useTemplate: boolean
+  includeHoles: boolean
+  minContourArea: number
+  maxContours: number
+  imageThreshold: number
+  imageBlurRadius: number
+  imageInvert: boolean
+  simplification: number
+  smoothing: number
+  highResGrid: number
+  cannyLow: number
+  cannyHigh: number
+  skeletonize: boolean
+  singleContour: boolean
 }
 
 const DIFFICULTY_OPTIONS: Array<{ value: FormState["difficulty"]; label: string }> = [
@@ -69,6 +83,7 @@ async function fileToDataUrl(file: File): Promise<string> {
 export function GraphicDictationGenerator({ onResult, onSvgGenerated, prompt, width, height }: GraphicDictationGeneratorProps) {
   const [form, setForm] = useState<FormState>(() => ({
     description: typeof prompt === "string" ? prompt : "",
+    shapeName: "",
     sourceImage: "",
     gridWidth: typeof width === "number" && width > 0 ? Math.round(width) : 16,
     gridHeight: typeof height === "number" && height > 0 ? Math.round(height) : 16,
@@ -77,6 +92,19 @@ export function GraphicDictationGenerator({ onResult, onSvgGenerated, prompt, wi
     allowDiagonals: false,
     shards: 4,
     useTemplate: true,
+    includeHoles: true,
+    minContourArea: 0.02,
+    maxContours: 8,
+    imageThreshold: 0.5,
+    imageBlurRadius: 0,
+    imageInvert: false,
+    simplification: 1.5,
+    smoothing: 0,
+    highResGrid: 256,
+    cannyLow: 0,
+    cannyHigh: 0,
+    skeletonize: false,
+    singleContour: false,
   }))
   const latestProps = useRef<{ prompt?: string; width?: number; height?: number }>({ prompt, width, height })
   const [jobId, setJobId] = useState<string | null>(null)
@@ -148,15 +176,30 @@ export function GraphicDictationGenerator({ onResult, onSvgGenerated, prompt, wi
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          description: form.useTemplate ? form.description.trim() : undefined,
-          source_image: !form.useTemplate ? sourceImage : undefined,
+          description: form.useTemplate && form.description.trim() ? form.description.trim() : undefined,
+          shape_name: form.useTemplate && form.shapeName.trim() ? form.shapeName.trim() : undefined,
+          source_image: !form.useTemplate && sourceImage ? sourceImage : undefined,
           grid_width: Number(form.gridWidth),
           grid_height: Number(form.gridHeight),
           cell_size_mm: Number(form.cellSize),
           difficulty: form.difficulty,
           allow_diagonals: form.allowDiagonals,
-          shard: Number(form.shards),
           shards: Number(form.shards),
+          include_holes: !form.useTemplate ? form.includeHoles : undefined,
+          image_threshold: !form.useTemplate ? form.imageThreshold : undefined,
+          image_blur_radius: !form.useTemplate ? form.imageBlurRadius : undefined,
+          image_invert: !form.useTemplate ? form.imageInvert : undefined,
+          simplification: !form.useTemplate ? form.simplification : undefined,
+          smoothing: !form.useTemplate ? form.smoothing : undefined,
+          image_min_contour_area: !form.useTemplate ? form.minContourArea : undefined,
+          image_max_contours: !form.useTemplate ? form.maxContours : undefined,
+          image_high_res_grid: !form.useTemplate ? form.highResGrid : undefined,
+          image_canny_low:
+            !form.useTemplate && form.cannyLow > 0 ? Number(form.cannyLow) : undefined,
+          image_canny_high:
+            !form.useTemplate && form.cannyHigh > 0 ? Number(form.cannyHigh) : undefined,
+          image_skeletonize: !form.useTemplate ? form.skeletonize : undefined,
+          image_single_contour: !form.useTemplate ? form.singleContour : undefined,
         }),
       })
 
@@ -175,7 +218,7 @@ export function GraphicDictationGenerator({ onResult, onSvgGenerated, prompt, wi
     } finally {
       setIsSubmitting(false)
     }
-  }, [form, localFile, onSvgGenerated])
+  }, [form, localFile, localFileDataUrl, onSvgGenerated])
 
   useEffect(() => {
     if (!jobId || !isPolling) {
@@ -364,23 +407,36 @@ export function GraphicDictationGenerator({ onResult, onSvgGenerated, prompt, wi
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 space-y-3">
             {form.useTemplate ? (
-              // Template mode: description input
-              <>
-                <Label htmlFor="gd-description">Описание фигуры</Label>
-                <Textarea
-                  id="gd-description"
-                  placeholder="Например: домик, машинка, робот, ёлка, собачка, бетономешалка..."
-                  value={form.description}
-                  onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-                  rows={3}
-                  disabled={isSubmitting}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Введите название фигуры или описание того, что хотите нарисовать. 
-                  Доступны готовые шаблоны (домик, дерево, машинка, робот, собачка, кошка) 
-                  или AI создаст новую фигуру по вашему описанию.
-                </p>
-              </>
+              // Template mode: description or shape name
+              <div className="grid grid-cols-1 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="gd-shape-name">Название готового шаблона</Label>
+                  <Input
+                    id="gd-shape-name"
+                    placeholder="Например: домик, робот, ёлка"
+                    value={form.shapeName}
+                    onChange={(e) => setForm((prev) => ({ ...prev, shapeName: e.target.value }))}
+                    disabled={isSubmitting}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Заполните, если хотите использовать заранее подготовленный шаблон. Имя ищется без учёта регистра.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="gd-description">Описание новой фигуры</Label>
+                  <Textarea
+                    id="gd-description"
+                    placeholder="Например: домик с трубой и деревьями рядом"
+                    value={form.description}
+                    onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+                    rows={3}
+                    disabled={isSubmitting}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Можете указать описание, если хотите сгенерировать фигуру с нуля. Достаточно заполнить одно из полей.
+                  </p>
+                </div>
+              </div>
             ) : (
               // Image mode: file upload
               <>
@@ -481,6 +537,49 @@ export function GraphicDictationGenerator({ onResult, onSvgGenerated, prompt, wi
               value={form.shards}
               onChange={(e) => setForm((prev) => ({ ...prev, shards: Number(e.target.value || 1) }))}
             />
+            {!form.useTemplate && (
+              <>
+                <Label htmlFor="gd-threshold">Порог бинаризации (0..1)</Label>
+                <Input
+                  id="gd-threshold"
+                  type="number"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={form.imageThreshold}
+                  onChange={(e) => setForm((prev) => ({ ...prev, imageThreshold: Number(e.target.value || 0) }))}
+                />
+                <Label htmlFor="gd-blur">Радиус размытия</Label>
+                <Input
+                  id="gd-blur"
+                  type="number"
+                  min={0}
+                  max={50}
+                  step={0.5}
+                  value={form.imageBlurRadius}
+                  onChange={(e) => setForm((prev) => ({ ...prev, imageBlurRadius: Number(e.target.value || 0) }))}
+                />
+                <Label htmlFor="gd-min-contour">Мин. площадь контура (%)</Label>
+                <Input
+                  id="gd-min-contour"
+                  type="number"
+                  min={0.0}
+                  max={1.0}
+                  step={0.01}
+                  value={form.minContourArea}
+                  onChange={(e) => setForm((prev) => ({ ...prev, minContourArea: Number(e.target.value || 0) }))}
+                />
+                <Label htmlFor="gd-max-contours">Макс. количество контуров</Label>
+                <Input
+                  id="gd-max-contours"
+                  type="number"
+                  min={1}
+                  max={256}
+                  value={form.maxContours}
+                  onChange={(e) => setForm((prev) => ({ ...prev, maxContours: Number(e.target.value || 1) }))}
+                />
+              </>
+            )}
           </div>
         </div>
 
@@ -549,6 +648,105 @@ export function GraphicDictationGenerator({ onResult, onSvgGenerated, prompt, wi
           />
         </div>
 
+        {!form.useTemplate && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border border-dashed border-border bg-muted/20 p-4 rounded-md">
+            <div className="space-y-2">
+              <Label htmlFor="gd-simplification">Сильность упрощения линии</Label>
+              <Input
+                id="gd-simplification"
+                type="number"
+                min={0}
+                max={100}
+                step={0.1}
+                value={form.simplification}
+                onChange={(e) => setForm((prev) => ({ ...prev, simplification: Number(e.target.value || 0) }))}
+              />
+              <Label htmlFor="gd-smoothing">Сглаживание (окно)</Label>
+              <Input
+                id="gd-smoothing"
+                type="number"
+                min={0}
+                max={9}
+                value={form.smoothing}
+                onChange={(e) => setForm((prev) => ({ ...prev, smoothing: Number(e.target.value || 0) }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="gd-high-res">High-res сетка</Label>
+              <Input
+                id="gd-high-res"
+                type="number"
+                min={32}
+                max={2048}
+                value={form.highResGrid}
+                onChange={(e) => setForm((prev) => ({ ...prev, highResGrid: Number(e.target.value || 32) }))}
+              />
+              <Label htmlFor="gd-canny-low">Canny Low</Label>
+              <Input
+                id="gd-canny-low"
+                type="number"
+                min={0}
+                max={1024}
+                step={1}
+                value={form.cannyLow}
+                onChange={(e) => setForm((prev) => ({ ...prev, cannyLow: Number(e.target.value || 0) }))}
+              />
+              <Label htmlFor="gd-canny-high">Canny High</Label>
+              <Input
+                id="gd-canny-high"
+                type="number"
+                min={0}
+                max={1024}
+                step={1}
+                value={form.cannyHigh}
+                onChange={(e) => setForm((prev) => ({ ...prev, cannyHigh: Number(e.target.value || 0) }))}
+              />
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2">
+                <Label htmlFor="gd-invert" className="text-sm">Инвертировать изображение</Label>
+                <input
+                  id="gd-invert"
+                  type="checkbox"
+                  className="h-5 w-5 cursor-pointer rounded border border-border"
+                  checked={form.imageInvert}
+                  onChange={(event) => setForm((prev) => ({ ...prev, imageInvert: event.target.checked }))}
+                />
+              </div>
+              <div className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2">
+                <Label htmlFor="gd-skeletonize" className="text-sm">Скелетизация</Label>
+                <input
+                  id="gd-skeletonize"
+                  type="checkbox"
+                  className="h-5 w-5 cursor-pointer rounded border border-border"
+                  checked={form.skeletonize}
+                  onChange={(event) => setForm((prev) => ({ ...prev, skeletonize: event.target.checked }))}
+                />
+              </div>
+              <div className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2">
+                <Label htmlFor="gd-single-contour" className="text-sm">Оставить один контур</Label>
+                <input
+                  id="gd-single-contour"
+                  type="checkbox"
+                  className="h-5 w-5 cursor-pointer rounded border border-border"
+                  checked={form.singleContour}
+                  onChange={(event) => setForm((prev) => ({ ...prev, singleContour: event.target.checked }))}
+                />
+              </div>
+              <div className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2">
+                <Label htmlFor="gd-include-holes" className="text-sm">Искать отверстия внутри контуров</Label>
+                <input
+                  id="gd-include-holes"
+                  type="checkbox"
+                  className="h-5 w-5 cursor-pointer rounded border border-border"
+                  checked={form.includeHoles}
+                  onChange={(event) => setForm((prev) => ({ ...prev, includeHoles: event.target.checked }))}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         {error && (
           <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
@@ -560,7 +758,9 @@ export function GraphicDictationGenerator({ onResult, onSvgGenerated, prompt, wi
             onClick={submit} 
             disabled={
               isSubmitting || 
-              (form.useTemplate ? !form.description.trim() : (!form.sourceImage.trim() && !localFile))
+              (form.useTemplate
+                ? !form.description.trim() && !form.shapeName.trim()
+                : (!form.sourceImage.trim() && !localFile))
             }
           >
             {isSubmitting ? (

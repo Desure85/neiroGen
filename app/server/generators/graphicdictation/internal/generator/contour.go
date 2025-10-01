@@ -1,7 +1,6 @@
 package generator
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"errors"
@@ -12,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -21,14 +21,17 @@ import (
 )
 
 const (
-	defaultImageThreshold  = 0.5
-	defaultSimplification  = 1.5
-	maxSmoothingWindowSize = 9
+	defaultImageThreshold      = 0.5
+	defaultSimplification      = 1.5
+	maxSmoothingWindowSize     = 9
+	defaultMinContourAreaRatio = 0.02
+	defaultMaxDetectedContours = 8
+	defaultHighResGrid         = 256
 )
 
 var errEmptyPath = errors.New("empty path data")
 
-// generateContoursFromImage извлекает контуры из изображения и нормализует их под сетку.
+// generateContoursFromImage извлекает контуры из изображения и нормализует их под сетку генератора.
 func generateContoursFromImage(ctx context.Context, req api.GenerateRequest) ([][]image.Point, error) {
 	data, err := loadImage(ctx, req.SourceImage)
 	if err != nil {
@@ -60,48 +63,63 @@ func generateContoursFromImage(ctx context.Context, req api.GenerateRequest) ([]
 		processed = blurred.Clone()
 	}
 
-	threshold := clampFloat(req.ImageThreshold, 0.0, 1.0)
-	if threshold == 0 {
-		threshold = defaultImageThreshold
-	}
-
-	thresholdValue := threshold * 255.0
 	binary := gocv.NewMat()
 	defer binary.Close()
 
-	threshType := gocv.ThresholdBinary
-	if req.ImageInvert {
-		threshType = gocv.ThresholdBinaryInv
+	applyCanny := req.ImageCannyLow > 0 && req.ImageCannyHigh > 0
+	if applyCanny {
+		gocv.Canny(processed, &binary, req.ImageCannyLow, req.ImageCannyHigh)
+	} else {
+		threshold := clampFloat(req.ImageThreshold, 0.0, 1.0)
+		if threshold == 0 {
+			threshold = defaultImageThreshold
+		}
+		thresholdValue := float32(threshold * 255.0)
+		threshType := gocv.ThresholdBinary
+		if req.ImageInvert {
+			threshType = gocv.ThresholdBinaryInv
+		}
+		gocv.Threshold(processed, &binary, thresholdValue, 255, threshType)
 	}
 
-	gocv.Threshold(processed, &binary, float32(thresholdValue), 255, threshType)
+	morphKernel := gocv.GetStructuringElement(gocv.MorphRect, image.Pt(3, 3))
+	defer morphKernel.Close()
+	cleaned := gocv.NewMat()
+	defer cleaned.Close()
+	gocv.MorphologyEx(binary, &cleaned, gocv.MorphClose, morphKernel)
 
-	contours := findHierarchicalContours(binary, req.IncludeHoles)
+	if req.ImageSkeletonize {
+		skeleton := skeletonize(cleaned)
+		cleaned.Close()
+		cleaned = skeleton
+	}
+
+	contours := findFilteredContours(cleaned, req.IncludeHoles, req.ImageMinContourArea, req.ImageMaxContours)
 	if len(contours) == 0 {
 		return nil, errors.New("no contours detected")
 	}
 
-	simplified := make([][]image.Point, 0, len(contours))
-	epsilon := req.Simplification
-	if epsilon <= 0 {
-		epsilon = defaultSimplification
-	}
-	for _, contour := range contours {
-		simplifiedPath := simplifyContourPath(contour, epsilon)
-		smoothed := smoothPath(simplifiedPath, req.Smoothing)
-		dedup := deduplicatePath(smoothed)
-		if len(dedup) == 0 {
-			continue
-		}
-		simplified = append(simplified, dedup)
+	if req.ImageSingleContour && len(contours) > 1 {
+		contours = contours[:1]
 	}
 
+	simplified := simplifyContours(contours, req.Simplification, req.Smoothing)
 	if len(simplified) == 0 {
 		return nil, errors.New("all contour paths were empty after simplification")
 	}
 
-	normalized := normalizeContours(simplified, req.GridWidth, req.GridHeight)
-	return normalized, nil
+	highResGrid := req.ImageHighResGrid
+	if highResGrid <= 0 || highResGrid < req.GridWidth || highResGrid < req.GridHeight {
+		highResGrid = defaultHighResGrid
+	}
+
+	highRes := normalizeContours(simplified, highResGrid, highResGrid)
+	downsampled := downsampleContours(highRes, highResGrid, req.GridWidth, req.GridHeight)
+	if len(downsampled) == 0 {
+		return nil, errors.New("downsampled contours are empty")
+	}
+
+	return normalizeContours(downsampled, req.GridWidth, req.GridHeight), nil
 }
 
 func kernelSizeFromRadius(radius float64) int {
@@ -118,11 +136,110 @@ func kernelSizeFromRadius(radius float64) int {
 	return base
 }
 
-func findHierarchicalContours(src gocv.Mat, includeHoles bool) [][]image.Point {
-	contoursVec := gocv.FindContours(src, gocv.RetrievalExternal, gocv.ChainApproxSimple)
-	return contoursVec.ToPoints()
+func findFilteredContours(src gocv.Mat, includeHoles bool, minAreaRatio float64, maxContours int) [][]image.Point {
+	mode := gocv.RetrievalExternal
+	if includeHoles {
+		mode = gocv.RetrievalTree
+	}
+
+	contoursVec := gocv.FindContours(src, mode, gocv.ChainApproxSimple)
+	defer contoursVec.Close()
+
+	totalPixels := float64(src.Rows() * src.Cols())
+	minArea := clampFloat(minAreaRatio, 0, 1)
+	if minArea <= 0 {
+		minArea = defaultMinContourAreaRatio
+	}
+	minPixels := minArea * totalPixels
+
+	type contourWithArea struct {
+		points []image.Point
+		area   float64
+	}
+
+	filtered := make([]contourWithArea, 0, contoursVec.Size())
+	for i := 0; i < contoursVec.Size(); i++ {
+		pv := contoursVec.At(i)
+		area := math.Abs(gocv.ContourArea(pv))
+		if area < minPixels {
+			pv.Close()
+			continue
+		}
+		filtered = append(filtered, contourWithArea{
+			points: pv.ToPoints(),
+			area:   area,
+		})
+		pv.Close()
+	}
+
+	if len(filtered) == 0 {
+		return nil
+	}
+
+	sort.Slice(filtered, func(i, j int) bool {
+		return filtered[i].area > filtered[j].area
+	})
+
+	limit := maxContours
+	if limit <= 0 {
+		limit = defaultMaxDetectedContours
+	}
+	if len(filtered) > limit {
+		filtered = filtered[:limit]
+	}
+
+	result := make([][]image.Point, len(filtered))
+	for i, c := range filtered {
+		result[i] = c.points
+	}
+	return result
 }
 
+func simplifyContours(paths [][]image.Point, epsilon float64, smoothing int) [][]image.Point {
+	if len(paths) == 0 {
+		return nil
+	}
+
+	if epsilon <= 0 {
+		epsilon = defaultSimplification
+	}
+
+	result := make([][]image.Point, 0, len(paths))
+	for _, contour := range paths {
+		simplified := simplifyContourPath(contour, epsilon)
+		smoothed := smoothPath(simplified, smoothing)
+		dedup := deduplicatePath(smoothed)
+		if len(dedup) == 0 {
+			continue
+		}
+		result = append(result, dedup)
+	}
+
+	return result
+}
+
+func skeletonize(src gocv.Mat) gocv.Mat {
+	skeleton := gocv.Zeros(src.Rows(), src.Cols(), gocv.MatTypeCV8U)
+	element := gocv.GetStructuringElement(gocv.MorphCross, image.Pt(3, 3))
+	eroded := src.Clone()
+	defer eroded.Close()
+	temp := gocv.NewMat()
+	defer temp.Close()
+
+	for {
+		gocv.MorphologyEx(eroded, &temp, gocv.MorphOpen, element)
+		gocv.BitwiseNot(temp, &temp)
+		gocv.BitwiseAnd(eroded, temp, &temp)
+		gocv.BitwiseOr(skeleton, temp, &skeleton)
+		gocv.Erode(eroded, &eroded, element)
+		if gocv.CountNonZero(eroded) == 0 {
+			break
+		}
+	}
+
+	element.Close()
+	return skeleton
+}
 
 func reversePoints(points []image.Point) {
 	for i, j := 0, len(points)-1; i < j; i, j = i+1, j-1 {
@@ -271,6 +388,56 @@ func normalizeContours(paths [][]image.Point, gridWidth, gridHeight int) [][]ima
 		normalized = append(normalized, out)
 	}
 	return normalized
+}
+
+func downsampleContours(paths [][]image.Point, highRes, targetWidth, targetHeight int) [][]image.Point {
+	if len(paths) == 0 {
+		return paths
+	}
+
+	if targetWidth <= 0 || targetHeight <= 0 {
+		return paths
+	}
+
+	scaleX := float64(targetWidth-1) / float64(highRes-1)
+	scaleY := float64(targetHeight-1) / float64(highRes-1)
+
+	result := make([][]image.Point, 0, len(paths))
+
+	for _, path := range paths {
+		if len(path) == 0 {
+			continue
+		}
+
+		out := make([]image.Point, 0, len(path))
+		var last image.Point
+		haveLast := false
+
+		for _, pt := range path {
+			x := clampInt(int(math.Round(float64(pt.X)*scaleX)), 0, targetWidth-1)
+			y := clampInt(int(math.Round(float64(pt.Y)*scaleY)), 0, targetHeight-1)
+			mapped := image.Point{X: x, Y: y}
+			if !haveLast || mapped != last {
+				out = append(out, mapped)
+				last = mapped
+				haveLast = true
+			}
+		}
+
+		out = deduplicatePath(out)
+		if len(out) == 0 {
+			continue
+		}
+		out = simplifyContourPath(out, defaultSimplification)
+		out = deduplicatePath(out)
+		if len(out) == 0 {
+			continue
+		}
+
+		result = append(result, out)
+	}
+
+	return result
 }
 
 func clampInt(value, min, max int) int {
@@ -557,22 +724,14 @@ func directionFromDelta(dx, dy int) string {
 		return "down"
 	case dy < 0 && dx == 0:
 		return "up"
-	case dx > 0 && dy > 0:
-		if absInt(dx) == absInt(dy) {
-			return "down-right"
-		}
-	case dx < 0 && dy > 0:
-		if absInt(dx) == absInt(dy) {
-			return "down-left"
-		}
-	case dx > 0 && dy < 0:
-		if absInt(dx) == absInt(dy) {
-			return "up-right"
-		}
-	case dx < 0 && dy < 0:
-		if absInt(dx) == absInt(dy) {
-			return "up-left"
-		}
+	case dx > 0 && dy > 0 && absInt(dx) == absInt(dy):
+		return "down-right"
+	case dx < 0 && dy > 0 && absInt(dx) == absInt(dy):
+		return "down-left"
+	case dx > 0 && dy < 0 && absInt(dx) == absInt(dy):
+		return "up-right"
+	case dx < 0 && dy < 0 && absInt(dx) == absInt(dy):
+		return "up-left"
 	}
 	return ""
 }
@@ -581,11 +740,11 @@ func buildInstructions(commands []api.Command) string {
 	if len(commands) == 0 {
 		return ""
 	}
-	var buf bytes.Buffer
+	var builder strings.Builder
 	for idx, cmd := range commands {
-		buf.WriteString(fmt.Sprintf("%d. Проведи линию %s на %d клеток.\n", idx+1, humanizeDirection(cmd.Direction), cmd.Steps))
+		builder.WriteString(fmt.Sprintf("%d. Проведи линию %s на %d клеток.\n", idx+1, humanizeDirection(cmd.Direction), cmd.Steps))
 	}
-	return strings.TrimSpace(buf.String())
+	return strings.TrimSpace(builder.String())
 }
 
 func humanizeDirection(dir string) string {
@@ -610,7 +769,6 @@ func humanizeDirection(dir string) string {
 		return dir
 	}
 }
-
 
 func absInt(v int) int {
 	if v < 0 {

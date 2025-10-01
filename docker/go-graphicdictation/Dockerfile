@@ -2,7 +2,7 @@
 
 ARG OPENCV_VERSION=4.10.0
 
-FROM golang:1.22.5-bookworm AS builder
+FROM golang:1.22.5-bookworm AS deps
 
 ARG OPENCV_VERSION
 
@@ -72,6 +72,19 @@ COPY app/server/generators/graphicdictation/go.mod ./
 COPY app/server/generators/graphicdictation/go.sum ./
 RUN go mod download
 
+FROM deps AS check
+
+COPY app/server/generators/graphicdictation/ ./
+
+RUN set -eux; \
+    files="$(gofmt -l .)"; \
+    if [ -n "${files}" ]; then \
+        printf 'gofmt found unformatted files:\n%s\n' "$files"; \
+        exit 1; \
+    fi
+
+FROM deps AS app
+
 COPY app/server/generators/graphicdictation/ ./
 
 RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
@@ -107,12 +120,12 @@ RUN apt-get update \
         python3-numpy \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /usr/local /usr/local
+COPY --from=app /usr/local /usr/local
 
 RUN ldconfig
 
 WORKDIR /app
 
-COPY --from=builder /out/graphicdictation /usr/local/bin/graphicdictation
+COPY --from=app /out/graphicdictation /usr/local/bin/graphicdictation
 
 ENTRYPOINT ["/usr/local/bin/graphicdictation"]

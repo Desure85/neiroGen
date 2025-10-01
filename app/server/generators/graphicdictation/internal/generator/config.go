@@ -1,33 +1,34 @@
 package generator
 
 import (
-    "context"
-    "errors"
-    "fmt"
-    "io"
-    "net"
-    "net/http"
-    "net/url"
-    "os"
-    "regexp"
-    "strconv"
-    "strings"
-    "sync"
-    "time"
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
+	"regexp"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
 
-    "github.com/minio/minio-go/v7"
-    "github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
 const (
-	maxRemoteImageSize     int64         = 10 * 1024 * 1024 // 10 MB
-	remoteDownloadTimeout  time.Duration = 15 * time.Second
-	defaultResultPrefix                  = "generator"
-	defaultSignedURLTTLMin int           = 60
+	defaultSignedURLTTLMin = 15
+	defaultResultPrefix    = "graphic-dictation/results"
+	maxRemoteImageSize     = 50 * 1024 * 1024
 )
 
 var (
-	minioOnce          sync.Once
+	initOnce sync.Once
+	initErr  error
+
 	minioClient        *minio.Client
 	minioPresignClient *minio.Client
 	minioBucket        string
@@ -35,46 +36,28 @@ var (
 	minioSignedURLTTL  time.Duration
 	minioPublicHost    string
 	minioPublicScheme  string
-	minioConfigErr     error
 
-	remoteHTTPClient *http.Client
-
-	sanitizeRegexp = regexp.MustCompile(`[^a-zA-Z0-9_-]+`)
+	remoteHTTPClient = &http.Client{Timeout: 30 * time.Second}
+	sanitizeRegexp   = regexp.MustCompile(`[^a-zA-Z0-9\-_]+`)
 )
 
-func init() {
-	http.DefaultClient.Timeout = remoteDownloadTimeout
-	noProxy := func(*http.Request) (*url.URL, error) { return nil, nil }
-	remoteHTTPClient = &http.Client{
-		Timeout: remoteDownloadTimeout,
-		Transport: &http.Transport{
-			Proxy:                 noProxy,
-			DialContext:           (&net.Dialer{Timeout: 5 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
-			ForceAttemptHTTP2:     true,
-			MaxIdleConns:          64,
-			IdleConnTimeout:       90 * time.Second,
-			TLSHandshakeTimeout:   5 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-		},
-	}
-}
-
 func getMinio() (*minio.Client, *minio.Client, string, string, time.Duration, error) {
-	minioOnce.Do(func() {
-		minioConfigErr = initMinio()
+	initOnce.Do(func() {
+		initErr = initMinio()
 	})
-
-	if minioConfigErr != nil {
-		return nil, nil, "", "", 0, minioConfigErr
+	if initErr != nil {
+		return nil, nil, "", "", 0, initErr
 	}
-
 	return minioClient, minioPresignClient, minioBucket, minioResultPrefix, minioSignedURLTTL, nil
 }
 
 func initMinio() error {
-	endpoint := strings.TrimSpace(os.Getenv("MINIO_ENDPOINT"))
-	if endpoint == "" {
-		return errors.New("MINIO_ENDPOINT is not configured")
+	internalEndpoint := strings.TrimSpace(os.Getenv("MINIO_INTERNAL_ENDPOINT"))
+	if internalEndpoint == "" {
+		internalEndpoint = strings.TrimSpace(os.Getenv("MINIO_ENDPOINT"))
+	}
+	if internalEndpoint == "" {
+		return errors.New("MINIO_INTERNAL_ENDPOINT is not configured")
 	}
 
 	accessKey := strings.TrimSpace(os.Getenv("MINIO_ACCESS_KEY"))
@@ -93,20 +76,20 @@ func initMinio() error {
 	}
 
 	secure := true
-	host := endpoint
-	if strings.Contains(endpoint, "://") {
-		parsed, err := url.Parse(endpoint)
+	host := internalEndpoint
+	if strings.Contains(internalEndpoint, "://") {
+		parsed, err := url.Parse(internalEndpoint)
 		if err != nil {
-			return fmt.Errorf("parse MINIO_ENDPOINT: %w", err)
+			return fmt.Errorf("parse MINIO_INTERNAL_ENDPOINT: %w", err)
 		}
 		if parsed.Host == "" {
-			return errors.New("MINIO_ENDPOINT must include host")
+			return errors.New("MINIO_INTERNAL_ENDPOINT must include host")
 		}
 		host = parsed.Host
 		secure = parsed.Scheme != "http"
 	} else {
-		// No scheme provided, respect MINIO_USE_SSL (default false)
-		if v := strings.ToLower(strings.TrimSpace(os.Getenv("MINIO_USE_SSL"))); v == "false" || v == "0" || v == "" {
+		v := strings.ToLower(strings.TrimSpace(os.Getenv("MINIO_USE_SSL")))
+		if v == "false" || v == "0" || v == "" {
 			secure = false
 		}
 	}
@@ -125,9 +108,9 @@ func initMinio() error {
 	}
 
 	opts := &minio.Options{
-		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
-		Secure: secure,
-		Region: region,
+		Creds:     credentials.NewStaticV4(accessKey, secretKey, ""),
+		Secure:    secure,
+		Region:    region,
 		Transport: transport,
 	}
 
@@ -158,13 +141,17 @@ func initMinio() error {
 		prefix = defaultResultPrefix
 	}
 
-	if publicEndpoint := strings.TrimSpace(os.Getenv("MINIO_PUBLIC_ENDPOINT")); publicEndpoint != "" {
-		parsed, err := url.Parse(publicEndpoint)
+	externalEndpoint := strings.TrimSpace(os.Getenv("MINIO_EXTERNAL_ENDPOINT"))
+	if externalEndpoint == "" {
+		externalEndpoint = strings.TrimSpace(os.Getenv("MINIO_PUBLIC_ENDPOINT"))
+	}
+	if externalEndpoint != "" {
+		parsed, err := url.Parse(externalEndpoint)
 		if err != nil {
-			return fmt.Errorf("parse MINIO_PUBLIC_ENDPOINT: %w", err)
+			return fmt.Errorf("parse MINIO_EXTERNAL_ENDPOINT: %w", err)
 		}
 		if parsed.Host == "" {
-			return errors.New("MINIO_PUBLIC_ENDPOINT must include host")
+			return errors.New("MINIO_EXTERNAL_ENDPOINT must include host")
 		}
 		minioPublicHost = parsed.Host
 		minioPublicScheme = parsed.Scheme

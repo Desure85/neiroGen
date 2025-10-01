@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import React from 'react'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,7 @@ interface WorksheetLayoutCanvasProps {
   onChange: (value: CanvasLayoutValue) => void
   className?: string
 }
+
 
 const generateId = () => `el_${Math.random().toString(36).slice(2, 10)}`
 

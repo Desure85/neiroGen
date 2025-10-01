@@ -44,7 +44,39 @@ class GraphicDictationController extends Controller
             'difficulty' => $request->input('difficulty', 'medium'),
             'allow_diagonals' => (bool) $request->boolean('allow_diagonals', false),
             'include_holes' => (bool) $request->boolean('include_holes', false),
+            'image_invert' => (bool) $request->boolean('image_invert', false),
+            'image_skeletonize' => (bool) $request->boolean('image_skeletonize', false),
+            'image_single_contour' => (bool) $request->boolean('image_single_contour', false),
         ];
+
+        $optionalFloats = [
+            'image_threshold',
+            'image_blur_radius',
+            'simplification',
+            'image_min_contour_area',
+            'image_canny_low',
+            'image_canny_high',
+        ];
+
+        foreach ($optionalFloats as $field) {
+            $value = $request->input($field);
+            if ($value !== null && $value !== '') {
+                $payload[$field] = (float) $value;
+            }
+        }
+
+        $optionalInts = [
+            'smoothing',
+            'image_max_contours',
+            'image_high_res_grid',
+        ];
+
+        foreach ($optionalInts as $field) {
+            $value = $request->input($field);
+            if ($value !== null && $value !== '') {
+                $payload[$field] = (int) $value;
+            }
+        }
 
         $config = config('generator.graphic_dictation');
         $defaultShards = (int) ($config['default_shards'] ?? 4);
@@ -67,6 +99,18 @@ class GraphicDictationController extends Controller
                 'difficulty' => $payload['difficulty'],
                 'allow_diagonals' => $payload['allow_diagonals'],
                 'include_holes' => $payload['include_holes'],
+                'image_threshold' => $payload['image_threshold'] ?? null,
+                'image_blur_radius' => $payload['image_blur_radius'] ?? null,
+                'image_invert' => $payload['image_invert'],
+                'simplification' => $payload['simplification'] ?? null,
+                'smoothing' => $payload['smoothing'] ?? null,
+                'image_min_contour_area' => $payload['image_min_contour_area'] ?? null,
+                'image_max_contours' => $payload['image_max_contours'] ?? null,
+                'image_high_res_grid' => $payload['image_high_res_grid'] ?? null,
+                'image_canny_low' => $payload['image_canny_low'] ?? null,
+                'image_canny_high' => $payload['image_canny_high'] ?? null,
+                'image_skeletonize' => $payload['image_skeletonize'],
+                'image_single_contour' => $payload['image_single_contour'],
             ];
 
             $this->jobService->setShardPayload($job->id, $shard->shard_index, $shardPayload);

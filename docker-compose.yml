@@ -39,6 +39,7 @@ services:
       - MINIO_ENDPOINT=http://minio:9000
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - MINIO_PUBLIC_ENDPOINT=${MINIO_PUBLIC_ENDPOINT:-http://localhost:9000}
     ports:
       - "8000:8000"
     healthcheck:
@@ -197,6 +198,7 @@ services:
       - MINIO_ENDPOINT=http://minio:9000
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - MINIO_PUBLIC_ENDPOINT=${MINIO_PUBLIC_ENDPOINT:-http://localhost:9000}
     command: >
       sh -c "
       php artisan queue:work rabbitmq --sleep=1 --tries=3 --no-interaction &
@@ -220,7 +222,7 @@ services:
       - MINIO_ENDPOINT=minio:9000
       - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
       - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
-      - MINIO_PUBLIC_ENDPOINT=${MINIO_PUBLIC_ENDPOINT:-http://minio:9000}
+      - MINIO_PUBLIC_ENDPOINT=${MINIO_PUBLIC_ENDPOINT:-http://localhost:9000}
       - MINIO_BUCKET=generator
       - MINIO_USE_SSL=false
     networks:
