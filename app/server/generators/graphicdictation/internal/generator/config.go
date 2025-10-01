@@ -103,6 +103,11 @@ func initMinio() error {
 		}
 		host = parsed.Host
 		secure = parsed.Scheme != "http"
+	} else {
+		// No scheme provided, respect MINIO_USE_SSL (default false)
+		if v := strings.ToLower(strings.TrimSpace(os.Getenv("MINIO_USE_SSL"))); v == "false" || v == "0" || v == "" {
+			secure = false
+		}
 	}
 
 	region := strings.TrimSpace(os.Getenv("MINIO_REGION"))

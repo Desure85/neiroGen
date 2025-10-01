@@ -109,6 +109,8 @@ RUN apt-get update \
 
 COPY --from=builder /usr/local /usr/local
 
+RUN ldconfig
+
 WORKDIR /app
 
 COPY --from=builder /out/graphicdictation /usr/local/bin/graphicdictation
