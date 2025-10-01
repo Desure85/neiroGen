@@ -1,535 +1,627 @@
 package generator
 
 import (
+	"bytes"
+	"context"
+	"encoding/base64"
+	"errors"
 	"fmt"
 	"image"
 	"math"
-	"sort"
+	"math/rand"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
 
-	"neirogen/app/server/generators/graphicdictation/internal/api"
+	"github.com/neirogen/graphicdictation/internal/api"
+	"github.com/neirogen/graphicdictation/internal/shapes"
+	gocv "gocv.io/x/gocv"
 )
 
-type edgeKey struct {
-	ax, ay, bx, by int
-}
+const (
+	defaultImageThreshold  = 0.5
+	defaultSimplification  = 1.5
+	maxSmoothingWindowSize = 9
+)
 
-func makeEdgeKey(a, b image.Point) edgeKey {
-	if a.X < b.X || (a.X == b.X && a.Y <= b.Y) {
-		return edgeKey{ax: a.X, ay: a.Y, bx: b.X, by: b.Y}
-	}
-	return edgeKey{ax: b.X, ay: b.Y, bx: a.X, by: a.Y}
-}
+var errEmptyPath = errors.New("empty path data")
 
-// buildContourPaths extracts contour paths from binary mask
-func buildContourPaths(mask [][]bool, includeHoles bool) ([][]image.Point, error) {
-	h := len(mask)
-	if h == 0 {
-		return nil, nil
-	}
-	w := len(mask[0])
-
-	outside := markOutside(mask)
-	adjacency := make(map[image.Point][]image.Point)
-	edges := make(map[edgeKey]struct{})
-
-	shouldInclude := func(nx, ny int) bool {
-		if nx < 0 || ny < 0 || nx >= w || ny >= h {
-			return true
-		}
-		if mask[ny][nx] {
-			return false
-		}
-		if includeHoles {
-			return true
-		}
-		return outside[ny][nx]
+// generateContoursFromImage извлекает контуры из изображения и нормализует их под сетку.
+func generateContoursFromImage(ctx context.Context, req api.GenerateRequest) ([][]image.Point, error) {
+	data, err := loadImage(ctx, req.SourceImage)
+	if err != nil {
+		return nil, fmt.Errorf("load image: %w", err)
 	}
 
-	addEdge := func(a, b image.Point) {
-		key := makeEdgeKey(a, b)
-		if _, exists := edges[key]; exists {
-			return
-		}
-		edges[key] = struct{}{}
-		adjacency[a] = append(adjacency[a], b)
-		adjacency[b] = append(adjacency[b], a)
+	img, err := gocv.IMDecode(data, gocv.IMReadColor)
+	if err != nil {
+		return nil, fmt.Errorf("decode image: %w", err)
+	}
+	defer img.Close()
+	if img.Empty() {
+		return nil, errors.New("decoded image is empty")
 	}
 
-	for y := 0; y < h; y++ {
-		for x := 0; x < w; x++ {
-			if !mask[y][x] {
-				continue
-			}
-			if shouldInclude(x, y-1) {
-				a := image.Point{X: x, Y: y}
-				b := image.Point{X: x + 1, Y: y}
-				addEdge(a, b)
-			}
-			if shouldInclude(x+1, y) {
-				a := image.Point{X: x + 1, Y: y}
-				b := image.Point{X: x + 1, Y: y + 1}
-				addEdge(a, b)
-			}
-			if shouldInclude(x, y+1) {
-				a := image.Point{X: x + 1, Y: y + 1}
-				b := image.Point{X: x, Y: y + 1}
-				addEdge(a, b)
-			}
-			if shouldInclude(x-1, y) {
-				a := image.Point{X: x, Y: y + 1}
-				b := image.Point{X: x, Y: y}
-				addEdge(a, b)
-			}
-		}
+	gray := gocv.NewMat()
+	defer gray.Close()
+	gocv.CvtColor(img, &gray, gocv.ColorBGRToGray)
+
+	processed := gray.Clone()
+	defer processed.Close()
+
+	if req.ImageBlurRadius > 0 {
+		kernel := kernelSizeFromRadius(req.ImageBlurRadius)
+		blurred := gocv.NewMat()
+		defer blurred.Close()
+		gocv.GaussianBlur(processed, &blurred, image.Pt(kernel, kernel), 0, 0, gocv.BorderDefault)
+		processed.Close()
+		processed = blurred.Clone()
 	}
 
-	if len(adjacency) == 0 {
-		return nil, nil
+	threshold := clampFloat(req.ImageThreshold, 0.0, 1.0)
+	if threshold == 0 {
+		threshold = defaultImageThreshold
 	}
 
-	for node, neighbors := range adjacency {
-		center := node
-		sort.Slice(neighbors, func(i, j int) bool {
-			a := neighbors[i]
-			b := neighbors[j]
-			angleA := math.Atan2(float64(a.Y-center.Y), float64(a.X-center.X))
-			angleB := math.Atan2(float64(b.Y-center.Y), float64(b.X-center.X))
-			return angleA < angleB
-		})
-		adjacency[node] = neighbors
+	thresholdValue := threshold * 255.0
+	binary := gocv.NewMat()
+	defer binary.Close()
+
+	threshType := gocv.ThresholdBinary
+	if req.ImageInvert {
+		threshType = gocv.ThresholdBinaryInv
 	}
 
-	used := make(map[edgeKey]bool)
-	paths := make([][]image.Point, 0)
+	gocv.Threshold(processed, &binary, float32(thresholdValue), 255, threshType)
 
-	for node, neighbors := range adjacency {
-		for _, neighbor := range neighbors {
-			key := makeEdgeKey(node, neighbor)
-			if used[key] {
-				continue
-			}
-			path := walkLoop(node, neighbor, adjacency, used)
-			if len(path) > 1 && path[0] == path[len(path)-1] {
-				paths = append(paths, path)
-			}
-		}
+	contours := findHierarchicalContours(binary, req.IncludeHoles)
+	if len(contours) == 0 {
+		return nil, errors.New("no contours detected")
 	}
 
-	sort.Slice(paths, func(i, j int) bool {
-		ai := paths[i][0]
-		aj := paths[j][0]
-		if ai.Y == aj.Y {
-			return ai.X < aj.X
-		}
-		return ai.Y < aj.Y
-	})
-
-	return paths, nil
-}
-
-func walkLoop(start, next image.Point, adjacency map[image.Point][]image.Point, used map[edgeKey]bool) []image.Point {
-	path := []image.Point{start}
-	current := start
-	prev := start
-
-	for {
-		key := makeEdgeKey(current, next)
-		if used[key] {
-			return nil
-		}
-		used[key] = true
-		current = next
-		path = append(path, current)
-		if current == start {
-			break
-		}
-		neighbors := adjacency[current]
-		found := false
-		for _, candidate := range neighbors {
-			if candidate == prev {
-				continue
-			}
-			candidateKey := makeEdgeKey(current, candidate)
-			if used[candidateKey] {
-				continue
-			}
-			next = candidate
-			found = true
-			break
-		}
-		if !found {
-			for _, candidate := range neighbors {
-				if candidate == start {
-					next = candidate
-					found = true
-					break
-				}
-			}
-		}
-		if !found {
-			return nil
-		}
-		prev = current
+	simplified := make([][]image.Point, 0, len(contours))
+	epsilon := req.Simplification
+	if epsilon <= 0 {
+		epsilon = defaultSimplification
 	}
-
-	return path
-}
-
-func markOutside(mask [][]bool) [][]bool {
-	h := len(mask)
-	if h == 0 {
-		return nil
-	}
-	w := len(mask[0])
-	out := make([][]bool, h)
-	for i := range out {
-		out[i] = make([]bool, w)
-	}
-
-	type point struct{ x, y int }
-	queue := make([]point, 0)
-	push := func(x, y int) {
-		if x < 0 || y < 0 || x >= w || y >= h {
-			return
-		}
-		if mask[y][x] || out[y][x] {
-			return
-		}
-		queue = append(queue, point{x: x, y: y})
-	}
-
-	for x := 0; x < w; x++ {
-		push(x, 0)
-		push(x, h-1)
-	}
-	for y := 0; y < h; y++ {
-		push(0, y)
-		push(w-1, y)
-	}
-
-	dirs := []image.Point{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}
-
-	for len(queue) > 0 {
-		p := queue[0]
-		queue = queue[1:]
-		if out[p.y][p.x] {
+	for _, contour := range contours {
+		simplifiedPath := simplifyContourPath(contour, epsilon)
+		smoothed := smoothPath(simplifiedPath, req.Smoothing)
+		dedup := deduplicatePath(smoothed)
+		if len(dedup) == 0 {
 			continue
 		}
-		out[p.y][p.x] = true
-		for _, d := range dirs {
-			nx := p.x + d.X
-			ny := p.y + d.Y
-			if nx < 0 || ny < 0 || nx >= w || ny >= h {
-				continue
-			}
-			if mask[ny][nx] || out[ny][nx] {
-				continue
-			}
-			queue = append(queue, point{x: nx, y: ny})
-		}
+		simplified = append(simplified, dedup)
 	}
 
-	return out
+	if len(simplified) == 0 {
+		return nil, errors.New("all contour paths were empty after simplification")
+	}
+
+	normalized := normalizeContours(simplified, req.GridWidth, req.GridHeight)
+	return normalized, nil
 }
 
-func buildCommandsFromPaths(paths [][]image.Point, allowDiag bool) []api.Command {
-	commands := make([]api.Command, 0)
-	var current image.Point
-	havePosition := false
-	penDown := false
+func kernelSizeFromRadius(radius float64) int {
+	if radius <= 0 {
+		return 1
+	}
+	base := int(math.Round(radius))*2 + 1
+	if base < 3 {
+		base = 3
+	}
+	if base%2 == 0 {
+		base++
+	}
+	return base
+}
 
-	appendPenUp := func() {
-		if len(commands) == 0 || commands[len(commands)-1].Direction != "lift_pen" {
-			commands = append(commands, api.Command{Direction: "lift_pen"})
-		}
-		penDown = false
+func findHierarchicalContours(src gocv.Mat, includeHoles bool) [][]image.Point {
+	contoursVec := gocv.FindContours(src, gocv.RetrievalExternal, gocv.ChainApproxSimple)
+	return contoursVec.ToPoints()
+}
+
+
+func reversePoints(points []image.Point) {
+	for i, j := 0, len(points)-1; i < j; i, j = i+1, j-1 {
+		points[i], points[j] = points[j], points[i]
+	}
+}
+
+func loadImage(ctx context.Context, source string) ([]byte, error) {
+	if strings.TrimSpace(source) == "" {
+		return nil, errors.New("image source is empty")
+	}
+	if strings.HasPrefix(source, "data:") {
+		return loadDataURLImage(source)
 	}
 
-	appendPenDown := func() {
-		if len(commands) == 0 || commands[len(commands)-1].Direction != "lower_pen" {
-			commands = append(commands, api.Command{Direction: "lower_pen"})
+	if parsed, err := url.Parse(source); err == nil && parsed.Scheme != "" {
+		switch parsed.Scheme {
+		case "http", "https":
+			return loadRemoteImage(ctx, source)
+		case "s3", "minio":
+			client, _, bucket, prefix, _, err := getMinio()
+			if err != nil {
+				return nil, fmt.Errorf("get minio client: %w", err)
+			}
+			object := strings.TrimPrefix(parsed.Path, "/")
+			if prefix != "" && !strings.HasPrefix(object, prefix) {
+				object = strings.Trim(prefix+"/"+object, "/")
+			}
+			return loadMinioObject(ctx, client, bucket, object)
+		default:
+			return nil, fmt.Errorf("unsupported image scheme: %s", parsed.Scheme)
 		}
-		penDown = true
 	}
 
-	appendSteps := func(direction string, steps int) {
+	return loadLocalImage(source)
+}
+
+func loadDataURLImage(dataURL string) ([]byte, error) {
+	comma := strings.IndexRune(dataURL, ',')
+	if comma == -1 {
+		return nil, errors.New("invalid data URL format")
+	}
+
+	meta := dataURL[:comma]
+	dataPart := dataURL[comma+1:]
+
+	if strings.Contains(meta, ";base64") {
+		decoded, err := base64.StdEncoding.DecodeString(dataPart)
+		if err != nil {
+			return nil, fmt.Errorf("decode data URL: %w", err)
+		}
+		if int64(len(decoded)) > maxRemoteImageSize {
+			return nil, fmt.Errorf("data URL image exceeds limit (%d bytes)", maxRemoteImageSize)
+		}
+		return decoded, nil
+	}
+
+	unescaped, err := url.QueryUnescape(dataPart)
+	if err != nil {
+		return nil, fmt.Errorf("unescape data URL: %w", err)
+	}
+	if int64(len(unescaped)) > maxRemoteImageSize {
+		return nil, fmt.Errorf("data URL image exceeds limit (%d bytes)", maxRemoteImageSize)
+	}
+	return []byte(unescaped), nil
+}
+
+func loadLocalImage(path string) ([]byte, error) {
+	if !filepath.IsAbs(path) {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return nil, fmt.Errorf("get cwd: %w", err)
+		}
+		path = filepath.Join(cwd, path)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, fmt.Errorf("stat local image: %w", err)
+	}
+	if info.IsDir() {
+		return nil, errors.New("image path points to directory")
+	}
+	if info.Size() > maxRemoteImageSize {
+		return nil, fmt.Errorf("local image exceeds limit (%d bytes)", maxRemoteImageSize)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read local image: %w", err)
+	}
+	return data, nil
+}
+
+func normalizeContours(paths [][]image.Point, gridWidth, gridHeight int) [][]image.Point {
+	if len(paths) == 0 {
+		return paths
+	}
+
+	minX, minY := math.MaxFloat64, math.MaxFloat64
+	maxX, maxY := -math.MaxFloat64, -math.MaxFloat64
+
+	for _, path := range paths {
+		for _, p := range path {
+			x := float64(p.X)
+			y := float64(p.Y)
+			if x < minX {
+				minX = x
+			}
+			if y < minY {
+				minY = y
+			}
+			if x > maxX {
+				maxX = x
+			}
+			if y > maxY {
+				maxY = y
+			}
+		}
+	}
+
+	width := maxX - minX
+	height := maxY - minY
+	if width == 0 {
+		width = 1
+	}
+	if height == 0 {
+		height = 1
+	}
+
+	scaleX := float64(gridWidth-1) / width
+	scaleY := float64(gridHeight-1) / height
+	scale := math.Min(scaleX, scaleY)
+
+	offsetX := (float64(gridWidth-1) - width*scale) / 2
+	offsetY := (float64(gridHeight-1) - height*scale) / 2
+
+	normalized := make([][]image.Point, 0, len(paths))
+	for _, path := range paths {
+		out := make([]image.Point, 0, len(path))
+		for _, pt := range path {
+			x := int(math.Round((float64(pt.X)-minX)*scale + offsetX))
+			y := int(math.Round((float64(pt.Y)-minY)*scale + offsetY))
+			x = clampInt(x, 0, gridWidth-1)
+			y = clampInt(y, 0, gridHeight-1)
+			out = append(out, image.Point{X: x, Y: y})
+		}
+		normalized = append(normalized, out)
+	}
+	return normalized
+}
+
+func clampInt(value, min, max int) int {
+	if value < min {
+		return min
+	}
+	if value > max {
+		return max
+	}
+	return value
+}
+
+func clampFloat(value float64, min, max float64) float64 {
+	if math.IsNaN(value) {
+		return min
+	}
+	if value < min {
+		return min
+	}
+	if value > max {
+		return max
+	}
+	return value
+}
+
+func simplifyContourPath(points []image.Point, epsilon float64) []image.Point {
+	if len(points) <= 2 {
+		cp := make([]image.Point, len(points))
+		copy(cp, points)
+		return cp
+	}
+
+	sqEps := epsilon * epsilon
+	var simplify func([]image.Point) []image.Point
+	simplify = func(pts []image.Point) []image.Point {
+		if len(pts) <= 2 {
+			res := make([]image.Point, len(pts))
+			copy(res, pts)
+			return res
+		}
+		start := pts[0]
+		end := pts[len(pts)-1]
+		maxDist := 0.0
+		index := 0
+		for i := 1; i < len(pts)-1; i++ {
+			dist := pointLineDistanceSq(pts[i], start, end)
+			if dist > maxDist {
+				maxDist = dist
+				index = i
+			}
+		}
+		if maxDist <= sqEps {
+			return []image.Point{start, end}
+		}
+		left := simplify(pts[:index+1])
+		right := simplify(pts[index:])
+		return append(left[:len(left)-1], right...)
+	}
+
+	result := simplify(points)
+	return result
+}
+
+func pointLineDistanceSq(p, a, b image.Point) float64 {
+	if a == b {
+		dx := float64(p.X - a.X)
+		dy := float64(p.Y - a.Y)
+		return dx*dx + dy*dy
+	}
+	ax := float64(a.X)
+	ay := float64(a.Y)
+	bx := float64(b.X)
+	by := float64(b.Y)
+	px := float64(p.X)
+	py := float64(p.Y)
+
+	dx := bx - ax
+	dy := by - ay
+
+	t := ((px-ax)*dx + (py-ay)*dy) / (dx*dx + dy*dy)
+	if t < 0 {
+		t = 0
+	} else if t > 1 {
+		t = 1
+	}
+	projX := ax + t*dx
+	projY := ay + t*dy
+
+	diffX := px - projX
+	diffY := py - projY
+	return diffX*diffX + diffY*diffY
+}
+
+func smoothPath(points []image.Point, smoothing int) []image.Point {
+	if smoothing <= 0 || len(points) < 3 {
+		res := make([]image.Point, len(points))
+		copy(res, points)
+		return res
+	}
+	if smoothing > maxSmoothingWindowSize {
+		smoothing = maxSmoothingWindowSize
+	}
+	window := smoothing*2 + 1
+	smoothed := make([]image.Point, len(points))
+	copy(smoothed, points)
+
+	for i := range points {
+		if i < smoothing || i >= len(points)-smoothing {
+			continue
+		}
+		sumX := 0
+		sumY := 0
+		for j := -smoothing; j <= smoothing; j++ {
+			sumX += points[i+j].X
+			sumY += points[i+j].Y
+		}
+		smoothed[i] = image.Point{X: sumX / window, Y: sumY / window}
+	}
+	return smoothed
+}
+
+func deduplicatePath(points []image.Point) []image.Point {
+	if len(points) == 0 {
+		return points
+	}
+	result := make([]image.Point, 0, len(points))
+	prev := points[0]
+	result = append(result, prev)
+	for _, p := range points[1:] {
+		if p != prev {
+			result = append(result, p)
+			prev = p
+		}
+	}
+	return result
+}
+
+func firstPoint(paths [][]image.Point) (int, int, error) {
+	for _, path := range paths {
+		if len(path) > 0 {
+			return path[0].Y, path[0].X, nil
+		}
+	}
+	return 0, 0, errEmptyPath
+}
+
+func selectTemplate(matcher *shapes.Matcher, req api.GenerateRequest) (*shapes.ShapeTemplate, error) {
+	if matcher == nil {
+		var err error
+		matcher, err = shapes.DefaultMatcher()
+		if err != nil {
+			return nil, fmt.Errorf("load templates: %w", err)
+		}
+	}
+	if name := strings.TrimSpace(req.ShapeName); name != "" {
+		if tmpl := matcher.GetByName(strings.ToLower(name)); tmpl != nil {
+			return tmpl, nil
+		}
+	}
+	if desc := strings.TrimSpace(req.Description); desc != "" {
+		if tmpl := matcher.MatchDescription(desc, strings.TrimSpace(req.Difficulty)); tmpl != nil {
+			return tmpl, nil
+		}
+		return nil, fmt.Errorf("no matching template for description")
+	}
+
+	tmpl := matcher.Random(strings.TrimSpace(req.Difficulty))
+	if tmpl == nil {
+		return nil, errors.New("no templates available")
+	}
+	return tmpl, nil
+}
+
+func generateTemplatePaths(req api.GenerateRequest, tmpl *shapes.ShapeTemplate) ([][]image.Point, error) {
+	if tmpl == nil {
+		return nil, errors.New("template is nil")
+	}
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	raw := tmpl.Generator(req.GridWidth, req.GridHeight, rng)
+	if len(raw) == 0 {
+		return nil, errors.New("template returned empty path")
+	}
+	clamped := make([][]image.Point, 0, len(raw))
+	for _, path := range raw {
+		dedup := deduplicatePath(path)
+		if len(dedup) == 0 {
+			continue
+		}
+		for i := range dedup {
+			dedup[i].X = clampInt(dedup[i].X, 0, req.GridWidth-1)
+			dedup[i].Y = clampInt(dedup[i].Y, 0, req.GridHeight-1)
+		}
+		clamped = append(clamped, dedup)
+	}
+	if len(clamped) == 0 {
+		return nil, errors.New("template produced no valid paths")
+	}
+	return clamped, nil
+}
+
+func buildCommandsFromPaths(paths [][]image.Point, allowDiagonals bool) ([]api.Command, error) {
+	if len(paths) == 0 {
+		return nil, errEmptyPath
+	}
+	cmds := make([]api.Command, 0)
+
+	appendCommand := func(direction string, steps int) {
 		if steps <= 0 {
 			return
 		}
-		if len(commands) > 0 {
-			last := &commands[len(commands)-1]
-			if last.Direction == direction && last.Steps > 0 {
-				last.Steps += steps
-				return
-			}
+		if len(cmds) > 0 && cmds[len(cmds)-1].Direction == direction {
+			cmds[len(cmds)-1].Steps += steps
+			return
 		}
-		commands = append(commands, api.Command{Direction: direction, Steps: steps})
+		cmds = append(cmds, api.Command{Action: "draw", Direction: direction, Steps: steps})
 	}
 
 	for _, path := range paths {
 		if len(path) < 2 {
 			continue
 		}
-		start := path[0]
-		if penDown {
-			appendPenUp()
-		}
-		if !havePosition || current != start {
-			commands = append(commands, api.Command{
-				Direction: "move_to",
-				TargetRow: start.Y,
-				TargetCol: start.X,
-			})
-			current = start
-			havePosition = true
-		}
-		appendPenDown()
-
 		for i := 1; i < len(path); i++ {
-			next := path[i]
-			dx := next.X - current.X
-			dy := next.Y - current.Y
-
-			if dx == 0 && dy == 0 {
-				continue
+			dx := path[i].X - path[i-1].X
+			dy := path[i].Y - path[i-1].Y
+			segments, err := directionsForDelta(dx, dy, allowDiagonals)
+			if err != nil {
+				return nil, err
 			}
-
-			var direction string
-			steps := 1
-
-			switch {
-			case dx == 1 && dy == 0:
-				direction = "right"
-			case dx == -1 && dy == 0:
-				direction = "left"
-			case dx == 0 && dy == 1:
-				direction = "down"
-			case dx == 0 && dy == -1:
-				direction = "up"
-			case allowDiag && dx == 1 && dy == 1:
-				direction = "diag_down_right"
-			case allowDiag && dx == -1 && dy == 1:
-				direction = "diag_down_left"
-			case allowDiag && dx == -1 && dy == -1:
-				direction = "diag_up_left"
-			case allowDiag && dx == 1 && dy == -1:
-				direction = "diag_up_right"
-			default:
-				appendPenUp()
-				commands = append(commands, api.Command{
-					Direction: "move_to",
-					TargetRow: next.Y,
-					TargetCol: next.X,
-				})
-				appendPenDown()
-				current = next
-				continue
+			for _, seg := range segments {
+				appendCommand(seg.direction, seg.steps)
 			}
-
-			appendSteps(direction, steps)
-			current = next
-		}
-
-		if penDown {
-			appendPenUp()
 		}
 	}
 
-	return commands
+	if len(cmds) == 0 {
+		return nil, errors.New("no drawable commands")
+	}
+	return cmds, nil
 }
 
-func buildInstructions(commands []api.Command) []string {
+type deltaSegment struct {
+	direction string
+	steps     int
+}
+
+func directionsForDelta(dx, dy int, allowDiag bool) ([]deltaSegment, error) {
+	if dx == 0 && dy == 0 {
+		return nil, nil
+	}
+	if allowDiag {
+		dir := directionFromDelta(dx, dy)
+		if dir == "" {
+			return nil, fmt.Errorf("unsupported diagonal delta dx=%d dy=%d", dx, dy)
+		}
+		steps := maxInt(absInt(dx), absInt(dy))
+		return []deltaSegment{{direction: dir, steps: steps}}, nil
+	}
+
+	segments := make([]deltaSegment, 0, 2)
+	if dx != 0 {
+		dir := directionFromDelta(dx, 0)
+		if dir == "" {
+			return nil, fmt.Errorf("unsupported horizontal delta dx=%d", dx)
+		}
+		segments = append(segments, deltaSegment{direction: dir, steps: absInt(dx)})
+	}
+	if dy != 0 {
+		dir := directionFromDelta(0, dy)
+		if dir == "" {
+			return nil, fmt.Errorf("unsupported vertical delta dy=%d", dy)
+		}
+		segments = append(segments, deltaSegment{direction: dir, steps: absInt(dy)})
+	}
+	return segments, nil
+}
+
+func directionFromDelta(dx, dy int) string {
+	switch {
+	case dx > 0 && dy == 0:
+		return "right"
+	case dx < 0 && dy == 0:
+		return "left"
+	case dy > 0 && dx == 0:
+		return "down"
+	case dy < 0 && dx == 0:
+		return "up"
+	case dx > 0 && dy > 0:
+		if absInt(dx) == absInt(dy) {
+			return "down-right"
+		}
+	case dx < 0 && dy > 0:
+		if absInt(dx) == absInt(dy) {
+			return "down-left"
+		}
+	case dx > 0 && dy < 0:
+		if absInt(dx) == absInt(dy) {
+			return "up-right"
+		}
+	case dx < 0 && dy < 0:
+		if absInt(dx) == absInt(dy) {
+			return "up-left"
+		}
+	}
+	return ""
+}
+
+func buildInstructions(commands []api.Command) string {
 	if len(commands) == 0 {
-		return nil
+		return ""
 	}
-
-	instructions := make([]string, 0, len(commands))
-
-	for _, cmd := range commands {
-		switch cmd.Direction {
-		case "move_to":
-			instructions = append(instructions, 
-				fmt.Sprintf("Переместитесь в клетку (строка %d, колонка %d)", cmd.TargetRow+1, cmd.TargetCol+1))
-		case "lift_pen":
-			instructions = append(instructions, "Поднимите карандаш")
-		case "lower_pen":
-			instructions = append(instructions, "Опустите карандаш")
-		default:
-			if cmd.Steps > 0 {
-				instructions = append(instructions, 
-					fmt.Sprintf("Двигайтесь %s на %d", translateDirection(cmd.Direction), cmd.Steps))
-			}
-		}
+	var buf bytes.Buffer
+	for idx, cmd := range commands {
+		buf.WriteString(fmt.Sprintf("%d. Проведи линию %s на %d клеток.\n", idx+1, humanizeDirection(cmd.Direction), cmd.Steps))
 	}
-
-	return instructions
+	return strings.TrimSpace(buf.String())
 }
 
-func translateDirection(dir string) string {
+func humanizeDirection(dir string) string {
 	switch dir {
-	case "right":
-		return "вправо"
-	case "left":
-		return "влево"
 	case "up":
 		return "вверх"
 	case "down":
 		return "вниз"
-	case "diag_down_right":
-		return "по диагонали вправо-вниз"
-	case "diag_down_left":
-		return "по диагонали влево-вниз"
-	case "diag_up_left":
-		return "по диагонали влево-вверх"
-	case "diag_up_right":
-		return "по диагонали вправо-вверх"
+	case "left":
+		return "влево"
+	case "right":
+		return "вправо"
+	case "up-right":
+		return "по диагонали вверх-вправо"
+	case "up-left":
+		return "по диагонали вверх-влево"
+	case "down-right":
+		return "по диагонали вниз-вправо"
+	case "down-left":
+		return "по диагонали вниз-влево"
 	default:
 		return dir
 	}
 }
 
-func toCanvasPolyline(path []image.Point, cellSize int) []image.Point {
-	points := make([]image.Point, len(path))
-	for i, pt := range path {
-		points[i] = image.Point{X: pt.X * cellSize, Y: pt.Y * cellSize}
+
+func absInt(v int) int {
+	if v < 0 {
+		return -v
 	}
-	return points
+	return v
 }
 
-// simplifyContourPath applies Douglas-Peucker algorithm to reduce path complexity
-func simplifyContourPath(path []image.Point, epsilon float64) []image.Point {
-	if len(path) <= 2 {
-		return path
+func maxInt(a, b int) int {
+	if a > b {
+		return a
 	}
-
-	// Find point with maximum distance from line segment
-	maxDist := 0.0
-	maxIndex := 0
-	start := path[0]
-	end := path[len(path)-1]
-
-	for i := 1; i < len(path)-1; i++ {
-		dist := perpendicularDistance(path[i], start, end)
-		if dist > maxDist {
-			maxDist = dist
-			maxIndex = i
-		}
-	}
-
-	// If max distance is greater than epsilon, recursively simplify
-	if maxDist > epsilon {
-		// Recursive call
-		left := simplifyContourPath(path[:maxIndex+1], epsilon)
-		right := simplifyContourPath(path[maxIndex:], epsilon)
-		
-		// Combine results (remove duplicate middle point)
-		result := make([]image.Point, 0, len(left)+len(right)-1)
-		result = append(result, left...)
-		result = append(result, right[1:]...)
-		return result
-	}
-
-	// If max distance is less than epsilon, return endpoints
-	return []image.Point{start, end}
-}
-
-func perpendicularDistance(point, lineStart, lineEnd image.Point) float64 {
-	dx := float64(lineEnd.X - lineStart.X)
-	dy := float64(lineEnd.Y - lineStart.Y)
-	
-	// Line segment length squared
-	lenSq := dx*dx + dy*dy
-	if lenSq == 0 {
-		// Line start and end are the same point
-		px := float64(point.X - lineStart.X)
-		py := float64(point.Y - lineStart.Y)
-		return math.Sqrt(px*px + py*py)
-	}
-
-	// Calculate perpendicular distance
-	t := ((float64(point.X-lineStart.X))*dx + (float64(point.Y-lineStart.Y))*dy) / lenSq
-	t = math.Max(0, math.Min(1, t))
-	
-	projX := float64(lineStart.X) + t*dx
-	projY := float64(lineStart.Y) + t*dy
-	
-	distX := float64(point.X) - projX
-	distY := float64(point.Y) - projY
-	
-	return math.Sqrt(distX*distX + distY*distY)
-}
-
-// smoothPath applies averaging smoothing to reduce jaggedness
-func smoothPath(path []image.Point, iterations int) []image.Point {
-	if len(path) < 3 || iterations <= 0 {
-		return path
-	}
-	
-	result := make([]image.Point, len(path))
-	copy(result, path)
-	
-	for iter := 0; iter < iterations; iter++ {
-		smoothed := make([]image.Point, len(result))
-		
-		// Keep first and last points fixed
-		smoothed[0] = result[0]
-		smoothed[len(result)-1] = result[len(result)-1]
-		
-		// Average each point with its neighbors
-		for i := 1; i < len(result)-1; i++ {
-			prevX := result[i-1].X
-			prevY := result[i-1].Y
-			currX := result[i].X
-			currY := result[i].Y
-			nextX := result[i+1].X
-			nextY := result[i+1].Y
-			
-			// Weighted average: 25% prev + 50% current + 25% next
-			smoothed[i] = image.Point{
-				X: (prevX + 2*currX + nextX) / 4,
-				Y: (prevY + 2*currY + nextY) / 4,
-			}
-		}
-		
-		result = smoothed
-	}
-	
-	// Remove consecutive duplicates after smoothing
-	deduplicated := []image.Point{result[0]}
-	for i := 1; i < len(result); i++ {
-		if result[i] != deduplicated[len(deduplicated)-1] {
-			deduplicated = append(deduplicated, result[i])
-		}
-	}
-	
-	return deduplicated
-}
-
-// scaleContourPath scales a path by a factor
-func scaleContourPath(path []image.Point, factor float64) []image.Point {
-	if factor == 1.0 {
-		return path
-	}
-	
-	scaled := make([]image.Point, len(path))
-	for i, pt := range path {
-		scaled[i] = image.Point{
-			X: int(math.Round(float64(pt.X) / factor)),
-			Y: int(math.Round(float64(pt.Y) / factor)),
-		}
-	}
-	
-	// Remove consecutive duplicates after scaling
-	if len(scaled) <= 1 {
-		return scaled
-	}
-	
-	deduplicated := []image.Point{scaled[0]}
-	for i := 1; i < len(scaled); i++ {
-		if scaled[i] != deduplicated[len(deduplicated)-1] {
-			deduplicated = append(deduplicated, scaled[i])
-		}
-	}
-	
-	return deduplicated
+	return b
 }

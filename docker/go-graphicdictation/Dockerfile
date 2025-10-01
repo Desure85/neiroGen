@@ -2,7 +2,7 @@
 
 ARG OPENCV_VERSION=4.10.0
 
-FROM golang:1.23-bookworm AS builder
+FROM golang:1.22.5-bookworm AS builder
 
 ARG OPENCV_VERSION
 
@@ -10,6 +10,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
+        ca-certificates \
         build-essential \
         pkg-config \
         cmake \
@@ -31,6 +32,7 @@ RUN apt-get update \
         libavutil-dev \
         liblapack-dev \
         gfortran \
+    && update-ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /tmp/opencv
@@ -74,7 +76,7 @@ COPY app/server/generators/graphicdictation/ ./
 
 RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
     -o /out/graphicdictation \
-    ./cmd/graphicdictation
+    ./cmd/worker
 
 FROM debian:bookworm-slim AS runtime
 

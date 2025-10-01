@@ -9,6 +9,11 @@ import { useI18n } from '@/components/localization'
 import { apiFetch } from '@/lib/api'
 import { GraphicDictationGenerator } from '@/components/graphic-dictation-generator'
 import type { GraphicDictationResult } from '@/components/graphic-dictation/types'
+import {
+  WorksheetLayoutEditor,
+  type CanvasLayoutValue,
+  createEmptyCanvasScene,
+} from '@/components/worksheets/worksheet-layout-editor'
 import { Star, StarOff, Settings2, ArrowRight, ArrowUp, ArrowDown, Eye, EyeOff, X } from 'lucide-react'
 
 const CONSTRUCTOR_STEPS = [
@@ -517,6 +522,7 @@ interface ExerciseDraft {
   estimated_duration: number
   instructions: string[]
   blocks: Array<{ id: number; title: string; type: string }>
+  layout: CanvasLayoutValue
 }
 
 // Типы теперь берём только с бэкенда через /api/exercise-types
@@ -536,6 +542,10 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
     estimated_duration: 10,
     instructions: ['Повторяйте вслух за диктором'],
     blocks: [],
+    layout: {
+      scene: createEmptyCanvasScene(),
+      snapshot: null,
+    },
   })
   const [customParams, setCustomParams] = React.useState<Record<string, any>>({})
   const [typeSchema, setTypeSchema] = React.useState<any | null>(null)
@@ -561,6 +571,9 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
   const [saveLoading, setSaveLoading] = React.useState(false)
   const [saveError, setSaveError] = React.useState<string>('')
   const [saveOk, setSaveOk] = React.useState<string>('')
+  const handleLayoutChange = React.useCallback((value: CanvasLayoutValue) => {
+    setDraft((prev) => ({ ...prev, layout: value }))
+  }, [])
   React.useEffect(() => {
     if (!draft.type) return
     const load = async () => {
@@ -705,6 +718,7 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
             ...customParams,
             graphic_dictation_result: draft.type === 'graphic_dictation' ? graphicDictationResult : undefined,
           },
+          layout: draft.layout,
         },
         tags: [] as string[],
         is_active: true,
@@ -1211,6 +1225,18 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
                     )}
                   </div>
                 )}
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-medium">Визуальный макет упражнения</div>
+                      <div className="text-xs text-muted-foreground">
+                        Скомпонуйте элементы, которые появятся в печатном варианте упражнения
+                      </div>
+                    </div>
+                  </div>
+                  <WorksheetLayoutEditor value={draft.layout} onChange={handleLayoutChange} />
+                </div>
 
                 <div>
                   <label className="block text-sm mb-1 text-muted-foreground">Инструкции</label>

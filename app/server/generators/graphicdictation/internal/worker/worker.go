@@ -1,163 +1,231 @@
 package worker
 
 import (
-	"context"
-	"fmt"
-	"log"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
+    "context"
+    "encoding/json"
+    "errors"
+    "fmt"
+    "log"
+    "os"
+    "strconv"
+    "strings"
+    "time"
 
-	gojson "github.com/goccy/go-json"
-	"github.com/streadway/amqp"
+    amqp "github.com/rabbitmq/amqp091-go"
 
-	"neirogen/app/server/generators/graphicdictation/internal/api"
-	"neirogen/app/server/generators/graphicdictation/internal/generator"
+    "github.com/neirogen/graphicdictation/internal/api"
+    "github.com/neirogen/graphicdictation/internal/generator"
 )
 
 const (
-	defaultRabbitURL      = "amqp://guest:guest@rabbitmq:5672/"
-	tasksQueueName        = "generator.graphic_dictation"
-	resultsQueueName      = "generator.graphic_dictation.results"
-	maxReconnectAttempts  = 10
-	reconnectBackoffStart = 500 * time.Millisecond
+    defaultRabbitURL         = "amqp://guest:guest@rabbitmq:5672/"
+    defaultTasksQueue        = "generator.graphic_dictation"
+    defaultResultsQueue      = "generator.graphic_dictation.results"
+    defaultPrefetch          = 1
+    defaultResultTTLSeconds  = 600
+    reconnectMaxAttempts     = 10
+    reconnectBackoffInitial  = 500 * time.Millisecond
 )
 
-// Run starts RabbitMQ consumer loop and blocks until context cancellation or signal.
+// Run запускает воркер графического диктанта и блокируется до завершения контекста.
 func Run(ctx context.Context) error {
-	rabbitURL := os.Getenv("RABBITMQ_URL")
-	if rabbitURL == "" {
-		rabbitURL = defaultRabbitURL
-	}
+    cfg := loadConfig()
 
-	log.Printf("[graphic-dictation] connecting to RabbitMQ %s", rabbitURL)
+    service, err := generator.NewService()
+    if err != nil {
+        return fmt.Errorf("init generator service: %w", err)
+    }
 
-	conn, ch, err := connect(rabbitURL)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		_ = ch.Close()
-		_ = conn.Close()
-	}()
+    conn, ch, err := connectRabbit(cfg)
+    if err != nil {
+        return err
+    }
+    defer func() {
+        _ = ch.Close()
+        _ = conn.Close()
+    }()
 
-	if err := setupQueues(ch); err != nil {
-		return err
-	}
+    if err := setupQueues(ch, cfg); err != nil {
+        return err
+    }
 
-	messages, err := ch.Consume(tasksQueueName, "graphic-dictation-worker", false, false, false, false, nil)
-	if err != nil {
-		return fmt.Errorf("consume: %w", err)
-	}
+    deliveries, err := ch.Consume(cfg.TasksQueue, "graphic-dictation-worker", false, false, false, false, nil)
+    if err != nil {
+        return fmt.Errorf("consume tasks: %w", err)
+    }
 
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+    for {
+        select {
+        case <-ctx.Done():
+            return ctx.Err()
+        case msg, ok := <-deliveries:
+            if !ok {
+                return errors.New("rabbitmq channel closed")
+            }
 
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-sigs:
-			return nil
-		case msg, ok := <-messages:
-			if !ok {
-				return fmt.Errorf("rabbitmq channel closed")
-			}
-			if err := handleMessage(ch, &msg); err != nil {
-				log.Printf("[graphic-dictation] handle message error: %v", err)
-				_ = msg.Nack(false, true)
-				continue
-			}
-			_ = msg.Ack(false)
-		}
-	}
+            handleCtx, cancel := context.WithTimeout(ctx, cfg.TaskTimeout)
+            handleErr := handleMessage(handleCtx, service, ch, &msg, cfg)
+            cancel()
+
+            if handleErr != nil {
+                log.Printf("[graphic-dictation] message handling failed: %v", handleErr)
+                if nackErr := msg.Nack(false, true); nackErr != nil {
+                    log.Printf("[graphic-dictation] nack failed: %v", nackErr)
+                }
+                continue
+            }
+
+            if err := msg.Ack(false); err != nil {
+                log.Printf("[graphic-dictation] ack failed: %v", err)
+            }
+        }
+    }
 }
 
-func connect(url string) (*amqp.Connection, *amqp.Channel, error) {
-	var conn *amqp.Connection
-	var err error
-	backoff := reconnectBackoffStart
-	for attempt := 0; attempt < maxReconnectAttempts; attempt++ {
-		conn, err = amqp.Dial(url)
-		if err == nil {
-			break
-		}
-		log.Printf("[graphic-dictation] rabbit connection failed: %v", err)
-		time.Sleep(backoff)
-		backoff *= 2
-	}
-	if err != nil {
-		return nil, nil, fmt.Errorf("connect rabbit: %w", err)
-	}
-
-	ch, err := conn.Channel()
-	if err != nil {
-		_ = conn.Close()
-		return nil, nil, fmt.Errorf("open channel: %w", err)
-	}
-	if err := ch.Qos(1, 0, false); err != nil {
-		_ = ch.Close()
-		_ = conn.Close()
-		return nil, nil, fmt.Errorf("set qos: %w", err)
-	}
-
-	return conn, ch, nil
+type workerConfig struct {
+    RabbitURL   string
+    TasksQueue  string
+    ResultsQueue string
+    ResultTTL   time.Duration
+    TaskTimeout time.Duration
+    Prefetch    int
 }
 
-func setupQueues(ch *amqp.Channel) error {
-	if _, err := ch.QueueDeclare(tasksQueueName, true, false, false, false, nil); err != nil {
-		return fmt.Errorf("declare tasks queue: %w", err)
-	}
-	if _, err := ch.QueueDeclare(resultsQueueName, true, false, false, false, nil); err != nil {
-		return fmt.Errorf("declare results queue: %w", err)
-	}
-	return nil
+func loadConfig() workerConfig {
+    cfg := workerConfig{
+        RabbitURL:   getEnvOrDefault("RABBITMQ_URL", defaultRabbitURL),
+        TasksQueue:  getEnvOrDefault("GRAPHIC_DICTATION_TASKS_QUEUE", defaultTasksQueue),
+        ResultsQueue: getEnvOrDefault("GRAPHIC_DICTATION_RESULTS_QUEUE", defaultResultsQueue),
+        ResultTTL:   time.Duration(defaultResultTTLSeconds) * time.Second,
+        TaskTimeout: 2 * time.Minute,
+        Prefetch:    defaultPrefetch,
+    }
+
+    if v := strings.TrimSpace(os.Getenv("GRAPHIC_DICTATION_RESULT_TTL")); v != "" {
+        if ttlSeconds, err := strconv.Atoi(v); err == nil && ttlSeconds > 0 {
+            cfg.ResultTTL = time.Duration(ttlSeconds) * time.Second
+        }
+    }
+
+    if v := strings.TrimSpace(os.Getenv("GRAPHIC_DICTATION_TASK_TIMEOUT")); v != "" {
+        if timeoutSeconds, err := strconv.Atoi(v); err == nil && timeoutSeconds > 0 {
+            cfg.TaskTimeout = time.Duration(timeoutSeconds) * time.Second
+        }
+    }
+
+    if v := strings.TrimSpace(os.Getenv("GRAPHIC_DICTATION_PREFETCH")); v != "" {
+        if prefetch, err := strconv.Atoi(v); err == nil && prefetch > 0 {
+            cfg.Prefetch = prefetch
+        }
+    }
+
+    return cfg
+}
+
+func getEnvOrDefault(key, fallback string) string {
+    if value := strings.TrimSpace(os.Getenv(key)); value != "" {
+        return value
+    }
+    return fallback
+}
+
+func connectRabbit(cfg workerConfig) (*amqp.Connection, *amqp.Channel, error) {
+    backoff := reconnectBackoffInitial
+    var conn *amqp.Connection
+    var err error
+    for attempt := 0; attempt < reconnectMaxAttempts; attempt++ {
+        conn, err = amqp.Dial(cfg.RabbitURL)
+        if err == nil {
+            break
+        }
+        log.Printf("[graphic-dictation] rabbit connection failed (attempt %d/%d): %v", attempt+1, reconnectMaxAttempts, err)
+        time.Sleep(backoff)
+        backoff *= 2
+    }
+    if err != nil {
+        return nil, nil, fmt.Errorf("connect rabbitmq: %w", err)
+    }
+
+    ch, err := conn.Channel()
+    if err != nil {
+        _ = conn.Close()
+        return nil, nil, fmt.Errorf("open channel: %w", err)
+    }
+    if err := ch.Qos(cfg.Prefetch, 0, false); err != nil {
+        _ = ch.Close()
+        _ = conn.Close()
+        return nil, nil, fmt.Errorf("set qos: %w", err)
+    }
+
+    return conn, ch, nil
+}
+
+func setupQueues(ch *amqp.Channel, cfg workerConfig) error {
+    if _, err := ch.QueueDeclare(cfg.TasksQueue, true, false, false, false, nil); err != nil {
+        return fmt.Errorf("declare tasks queue: %w", err)
+    }
+    if _, err := ch.QueueDeclare(cfg.ResultsQueue, true, false, false, false, nil); err != nil {
+        return fmt.Errorf("declare results queue: %w", err)
+    }
+    return nil
 }
 
 type resultMessage struct {
-	JobID      string                `json:"job_id"`
-	ShardIndex int                   `json:"shard_index"`
-	Status     string                `json:"status"`
-	Payload    *api.GenerateResponse `json:"payload,omitempty"`
-	Error      string                `json:"error,omitempty"`
+    JobID      string                 `json:"job_id"`
+    ShardIndex int                    `json:"shard_index"`
+    Status     string                 `json:"status"`
+    Payload    *api.GenerateResponse  `json:"payload,omitempty"`
+    Error      string                 `json:"error,omitempty"`
 }
 
-func handleMessage(ch *amqp.Channel, msg *amqp.Delivery) error {
-	var req api.GenerateRequest
-	if err := gojson.Unmarshal(msg.Body, &req); err != nil {
-		return fmt.Errorf("decode request: %w", err)
-	}
+func handleMessage(ctx context.Context, service *generator.Service, ch *amqp.Channel, msg *amqp.Delivery, cfg workerConfig) error {
+    var req api.GenerateRequest
+    if err := json.Unmarshal(msg.Body, &req); err != nil {
+        return fmt.Errorf("decode request: %w", err)
+    }
 
-	log.Printf("[graphic-dictation] processing job=%s shard=%d/%d", req.JobID, req.ShardIndex+1, req.ShardTotal)
+    if err := generator.ValidateRequest(req); err != nil {
+        return fmt.Errorf("validate request: %w", err)
+    }
 
-	res, err := generator.Generate(req)
+    log.Printf("[graphic-dictation] processing job=%s shard=%d/%d", req.JobID, req.ShardIndex+1, req.ShardTotal)
 
-	msgPayload := resultMessage{
-		JobID:      req.JobID,
-		ShardIndex: req.ShardIndex,
-	}
+    res, err := service.Generate(ctx, req)
 
-	if err != nil {
-		msgPayload.Status = "failed"
-		msgPayload.Error = err.Error()
-	} else {
-		msgPayload.Status = "completed"
-		msgPayload.Payload = &res
-	}
+    result := resultMessage{
+        JobID:      req.JobID,
+        ShardIndex: req.ShardIndex,
+    }
 
-	payload, err := gojson.Marshal(msgPayload)
-	if err != nil {
-		return fmt.Errorf("marshal result: %w", err)
-	}
+    if err != nil {
+        result.Status = "failed"
+        result.Error = err.Error()
+    } else {
+        result.Status = "completed"
+        result.Payload = res
+    }
 
-	if err := ch.Publish("", resultsQueueName, false, false, amqp.Publishing{
-		ContentType: "application/json",
-		Body:        payload,
-		Expiration:  "600000",
-	}); err != nil {
-		return fmt.Errorf("publish result: %w", err)
-	}
+    body, err := json.Marshal(result)
+    if err != nil {
+        return fmt.Errorf("marshal result: %w", err)
+    }
 
-	return nil
+    publishCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+    defer cancel()
+
+    properties := amqp.Publishing{
+        ContentType:  "application/json",
+        DeliveryMode: amqp.Persistent,
+        Timestamp:    time.Now().UTC(),
+        Body:         body,
+    }
+    if cfg.ResultTTL > 0 {
+        properties.Expiration = fmt.Sprintf("%d", int(cfg.ResultTTL/time.Millisecond))
+    }
+
+    if err := ch.PublishWithContext(publishCtx, "", cfg.ResultsQueue, false, false, properties); err != nil {
+        return fmt.Errorf("publish result: %w", err)
+    }
+
+    return nil
 }

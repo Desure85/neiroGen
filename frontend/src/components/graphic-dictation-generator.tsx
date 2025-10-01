@@ -187,6 +187,13 @@ export function GraphicDictationGenerator({ onResult, onSvgGenerated, prompt, wi
         if (isCancelled) return
         setStatus(data.status)
 
+        if (data.error) {
+          setError(data.error)
+          setIsPolling(false)
+          onSvgGenerated?.(null)
+          return
+        }
+
         if (data.status === "failed") {
           setError(data.error || "Ошибка генерации")
           setIsPolling(false)

@@ -2,142 +2,184 @@ package shapes
 
 import (
 	"math/rand"
+	"sort"
 	"strings"
-	"time"
+	"sync"
 )
 
-// Matcher finds shapes based on text description or random selection
+var matcherOnce sync.Once
+var cachedMatcher *Matcher
+var cachedMatcherErr error
+
+// Matcher сопоставляет запросы с шаблонами по имени, описанию и сложности.
 type Matcher struct {
-	templates []ShapeTemplate
-	rng       *rand.Rand
+	byName       map[string]*ShapeTemplate
+	byDifficulty map[string][]*ShapeTemplate
+	lexicon      map[string][]*ShapeTemplate
+	all          []*ShapeTemplate
 }
 
-// NewMatcher creates a new shape matcher
-func NewMatcher() *Matcher {
+// NewMatcher создаёт новый экземпляр сопоставителя на основе шаблонов.
+func NewMatcher(templates []*ShapeTemplate) *Matcher {
+	byName := make(map[string]*ShapeTemplate)
+	byDifficulty := make(map[string][]*ShapeTemplate)
+	lexicon := make(map[string][]*ShapeTemplate)
+
+	for _, tmpl := range templates {
+		name := strings.ToLower(tmpl.Name)
+		if name != "" {
+			byName[name] = tmpl
+		}
+
+		d := strings.ToLower(strings.TrimSpace(tmpl.Difficulty))
+		if d == "" {
+			d = "medium"
+		}
+		byDifficulty[d] = append(byDifficulty[d], tmpl)
+
+		keywords := collectKeywords(tmpl)
+		for _, word := range keywords {
+			lexicon[word] = append(lexicon[word], tmpl)
+		}
+	}
+
+	for _, list := range byDifficulty {
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].Name < list[j].Name
+		})
+	}
+
 	return &Matcher{
-		templates: GetTemplates(),
-		rng:       rand.New(rand.NewSource(time.Now().UnixNano())),
+		byName:       byName,
+		byDifficulty: byDifficulty,
+		lexicon:      lexicon,
+		all:          templates,
 	}
 }
 
-// MatchDescription tries to find a shape matching the text description
-// Returns nil if no match found
-func (m *Matcher) MatchDescription(description string, difficulty string) *ShapeTemplate {
-	desc := strings.ToLower(strings.TrimSpace(description))
-	
-	// Direct name matches
-	keywords := map[string][]string{
-		"square":      {"квадрат", "square"},
-		"rectangle":   {"прямоугольник", "rectangle"},
-		"house":       {"дом", "домик", "house"},
-		"tree":        {"дерево", "ёлка", "елка", "tree"},
-		"car":         {"машина", "машинка", "автомобиль", "car"},
-		"boat":        {"лодка", "кораблик", "корабль", "boat"},
-		"robot":       {"робот", "robot"},
-		"crane":       {"кран", "подъёмный кран", "подъемный кран", "crane"},
-		"airplane":    {"самолёт", "самолет", "airplane", "plane"},
-		"rocket":      {"ракета", "rocket"},
-		"butterfly":   {"бабочка", "butterfly"},
-		"dog":         {"собака", "собачка", "пёс", "песик", "dog"},
-		"cat":         {"кот", "кошка", "котик", "cat"},
-		"mixer_truck": {"бетономешалка", "миксер", "mixer", "concrete mixer", "mixer truck"},
-	}
-	
-	// Try to find by keywords
-	for shapeName, words := range keywords {
-		for _, word := range words {
-			if strings.Contains(desc, word) {
-				template := m.findByName(shapeName)
-				if template != nil && (difficulty == "" || template.Difficulty == difficulty) {
-					return template
-				}
-			}
+func collectKeywords(tmpl *ShapeTemplate) []string {
+	keywords := make([]string, 0, len(tmpl.Tags)+len(tmpl.Categories)+4)
+	keywords = append(keywords, strings.Fields(strings.ToLower(tmpl.Name))...)
+	keywords = append(keywords, strings.Fields(strings.ToLower(tmpl.DisplayName))...)
+	keywords = append(keywords, tmpl.Tags...)
+	keywords = append(keywords, tmpl.Categories...)
+	keywords = append(keywords, strings.Fields(strings.ToLower(tmpl.Description))...)
+
+	unique := make(map[string]struct{})
+	result := make([]string, 0, len(keywords))
+	for _, word := range keywords {
+		w := strings.TrimSpace(word)
+		if w == "" {
+			continue
 		}
-	}
-	
-	// Try to find by category
-	categories := map[string][]string{
-		"basic":      {"фигура", "простой", "basic", "shape"},
-		"buildings":  {"здание", "постройка", "building"},
-		"nature":     {"природа", "растение", "nature"},
-		"transport":  {"транспорт", "transport", "vehicle"},
-		"characters": {"персонаж", "character"},
-		"animals":    {"животное", "зверь", "animal"},
-	}
-	
-	for category, words := range categories {
-		for _, word := range words {
-			if strings.Contains(desc, word) {
-				templates := m.findByCategory(category, difficulty)
-				if len(templates) > 0 {
-					return &templates[m.rng.Intn(len(templates))]
-				}
-			}
+		w = strings.ToLower(w)
+		if _, exists := unique[w]; exists {
+			continue
 		}
+		unique[w] = struct{}{}
+		result = append(result, w)
 	}
-	
-	return nil
+	return result
 }
 
-// Random returns a random shape optionally filtered by difficulty
-func (m *Matcher) Random(difficulty string) *ShapeTemplate {
-	candidates := m.templates
-	
-	if difficulty != "" {
-		filtered := make([]ShapeTemplate, 0)
-		for _, t := range m.templates {
-			if t.Difficulty == difficulty {
-				filtered = append(filtered, t)
-			}
-		}
-		if len(filtered) > 0 {
-			candidates = filtered
-		}
-	}
-	
-	if len(candidates) == 0 {
+// GetByName возвращает шаблон по имени.
+func (m *Matcher) GetByName(name string) *ShapeTemplate {
+	if m == nil {
 		return nil
 	}
-	
-	idx := m.rng.Intn(len(candidates))
-	return &candidates[idx]
+	return m.byName[strings.ToLower(strings.TrimSpace(name))]
 }
 
-// GetByName returns a shape by exact name
-func (m *Matcher) GetByName(name string) *ShapeTemplate {
-	return m.findByName(name)
-}
+// MatchDescription пытается найти шаблон по описанию и сложности.
+func (m *Matcher) MatchDescription(description, difficulty string) *ShapeTemplate {
+	if m == nil {
+		return nil
+	}
+	difficulty = strings.ToLower(strings.TrimSpace(difficulty))
+	if difficulty == "" {
+		difficulty = "medium"
+	}
 
-// ListByDifficulty returns all shapes for a given difficulty
-func (m *Matcher) ListByDifficulty(difficulty string) []ShapeTemplate {
-	result := make([]ShapeTemplate, 0)
-	for _, t := range m.templates {
-		if difficulty == "" || t.Difficulty == difficulty {
-			result = append(result, t)
+	words := strings.Fields(strings.ToLower(description))
+	if len(words) == 0 {
+		return nil
+	}
+
+	candidates := make(map[*ShapeTemplate]int)
+	for _, word := range words {
+		templates := m.lexicon[word]
+		for _, tmpl := range templates {
+			candidates[tmpl]++
 		}
 	}
-	return result
-}
 
-// findByName internal helper
-func (m *Matcher) findByName(name string) *ShapeTemplate {
-	for i := range m.templates {
-		if m.templates[i].Name == name {
-			return &m.templates[i]
+	var best *ShapeTemplate
+	bestScore := 0
+	for tmpl, score := range candidates {
+		if score < bestScore {
+			continue
 		}
-	}
-	return nil
-}
-
-// findByCategory internal helper
-func (m *Matcher) findByCategory(category string, difficulty string) []ShapeTemplate {
-	result := make([]ShapeTemplate, 0)
-	for _, t := range m.templates {
-		if t.Category == category {
-			if difficulty == "" || t.Difficulty == difficulty {
-				result = append(result, t)
+		if score == bestScore {
+			if best != nil && tmpl.Name >= best.Name {
+				continue
 			}
 		}
+		best = tmpl
+		bestScore = score
 	}
-	return result
+
+	if best != nil && strings.EqualFold(best.Difficulty, difficulty) {
+		return best
+	}
+
+	list := m.byDifficulty[difficulty]
+	if len(list) == 0 {
+		return nil
+	}
+	return list[rand.Intn(len(list))]
+}
+
+// Random выбирает случайный шаблон указанной сложности.
+func (m *Matcher) Random(difficulty string) *ShapeTemplate {
+	if m == nil {
+		return nil
+	}
+	difficulty = strings.ToLower(strings.TrimSpace(difficulty))
+	if difficulty == "" {
+		difficulty = "medium"
+	}
+
+	list := m.byDifficulty[difficulty]
+	if len(list) == 0 {
+		return nil
+	}
+	return list[rand.Intn(len(list))]
+}
+
+// AllSummaries возвращает сводку всех шаблонов (для API).
+func (m *Matcher) AllSummaries() []TemplateSummary {
+	if m == nil {
+		return nil
+	}
+	summaries := make([]TemplateSummary, len(m.all))
+	for i, tmpl := range m.all {
+		summaries[i] = tmpl.Summary()
+	}
+	sort.Slice(summaries, func(i, j int) bool {
+		return summaries[i].Name < summaries[j].Name
+	})
+	return summaries
+}
+
+// DefaultMatcher возвращает синглтон для встроенных шаблонов.
+func DefaultMatcher() (*Matcher, error) {
+	matcherOnce.Do(func() {
+		templates, err := Definitions()
+		if err != nil {
+			cachedMatcherErr = err
+			return
+		}
+		cachedMatcher = NewMatcher(templates)
+	})
+	return cachedMatcher, cachedMatcherErr
 }

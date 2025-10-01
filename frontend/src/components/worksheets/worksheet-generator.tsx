@@ -1,7 +1,7 @@
 "use client"
 
 import React from 'react'
-import { Play, Search, Save, Printer, Download, RefreshCw, Trash2, Check, Star, ChevronDown } from 'lucide-react'
+import { Play, Search, Save, Printer, Download, RefreshCw, Trash2, Check, Star, ChevronDown, X, Filter, Info, AlertCircle, Loader2 } from 'lucide-react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -12,6 +12,22 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { apiFetch } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { RichTextEditor } from '@/components/worksheets/rich-text-editor'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import {
+  WorksheetLayoutEditor,
+  type CanvasLayoutValue,
+  type CanvasScene,
+  type CanvasElement,
+  createEmptyCanvasScene,
+} from '@/components/worksheets/worksheet-layout-editor'
+
+const TYPE_LABELS: Record<string, string> = {
+  pronunciation: 'Произношение',
+  articulation: 'Артикуляция',
+  rhythm: 'Ритм',
+  memory: 'Память',
+  other: 'Прочее',
+}
 
 type Exercise = {
   id: number
@@ -123,6 +139,8 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
   const [worksheetFeedback, setWorksheetFeedback] = React.useState<string | null>(null)
   const [presetFeedback, setPresetFeedback] = React.useState<string | null>(null)
   const [layoutFeedback, setLayoutFeedback] = React.useState<string | null>(null)
+  const [presetFeedbackVariant, setPresetFeedbackVariant] = React.useState<'success' | 'destructive' | 'info'>('info')
+  const [layoutFeedbackVariant, setLayoutFeedbackVariant] = React.useState<'success' | 'destructive' | 'info'>('info')
   const [savedWorksheetId, setSavedWorksheetId] = React.useState<number | null>(null)
   const [saving, setSaving] = React.useState(false)
   const [downloading, setDownloading] = React.useState(false)
@@ -157,8 +175,99 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
   const [presetSearchQuery, setPresetSearchQuery] = React.useState('')
   const presetPanelRef = React.useRef<HTMLDivElement | null>(null)
 
+  const searchInputRef = React.useRef<HTMLInputElement | null>(null)
+
   const defaultLayoutAppliedRef = React.useRef(false)
   const defaultPresetAppliedRef = React.useRef(false)
+  const autoLayoutInitializedRef = React.useRef(false)
+
+  const [worksheetLayout, setWorksheetLayout] = React.useState<CanvasLayoutValue>({
+    scene: createEmptyCanvasScene(),
+    snapshot: null,
+  })
+
+  const handleWorksheetLayoutChange = React.useCallback((value: CanvasLayoutValue) => {
+    setWorksheetLayout(value)
+  }, [])
+
+  const stripHtml = React.useCallback((html: string): string => {
+    if (!html) return ''
+    if (typeof window === 'undefined') {
+      return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+    }
+    const temp = window.document.createElement('div')
+    temp.innerHTML = html
+    const text = (temp.textContent || temp.innerText || '').replace(/\s+/g, ' ').trim()
+    temp.remove()
+    return text
+  }, [])
+
+  const generateWorksheetScene = React.useCallback((): CanvasScene => {
+    const base = createEmptyCanvasScene()
+    const margin = 48
+    const width = base.width - margin * 2
+    const elements: CanvasElement[] = []
+    let currentY = margin
+
+    const headerText = stripHtml(headerHtml)
+    if (headerText) {
+      elements.push({
+        id: `header_${Date.now()}`,
+        type: 'text',
+        x: margin,
+        y: currentY,
+        width,
+        height: 120,
+        text: headerText,
+        fontSize: 24,
+        fill: '#1f2937',
+      })
+      currentY += 140
+    }
+
+    const blockHeight = 140
+    const spacing = 24
+    selectedItems.forEach((item, index) => {
+      const title = item.customTitle?.trim() || item.snapshot?.title || `Задание ${index + 1}`
+      elements.push({
+        id: `item_${index}_${Date.now()}`,
+        type: 'placeholder',
+        x: margin,
+        y: currentY,
+        width,
+        height: blockHeight,
+        name: title,
+        fill: '#fef3c7',
+        stroke: '#f59e0b',
+      })
+      currentY += blockHeight + spacing
+    })
+
+    const footerText = stripHtml(footerHtml)
+    if (footerText) {
+      const footerHeight = 120
+      const footerY = Math.max(currentY, base.height - margin - footerHeight)
+      elements.push({
+        id: `footer_${Date.now()}`,
+        type: 'text',
+        x: margin,
+        y: footerY,
+        width,
+        height: footerHeight,
+        text: footerText,
+        fontSize: 18,
+        fill: '#1f2937',
+      })
+    }
+
+    return { ...base, elements }
+  }, [footerHtml, headerHtml, selectedItems, stripHtml])
+
+  const handleRebuildWorksheetLayout = React.useCallback(() => {
+    const scene = generateWorksheetScene()
+    setWorksheetLayout({ scene, snapshot: null })
+    autoLayoutInitializedRef.current = true
+  }, [generateWorksheetScene])
 
   React.useEffect(() => {
     if (!childContext) {
@@ -249,6 +358,23 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
             snapshot: item.content_snapshot ?? {},
           }))
         )
+
+        const canvasLayout = worksheet.meta?.canvas_layout as CanvasLayoutValue | undefined
+        if (canvasLayout?.scene) {
+          setWorksheetLayout({
+            scene: {
+              ...canvasLayout.scene,
+              elements: Array.isArray(canvasLayout.scene.elements)
+                ? canvasLayout.scene.elements.map((element: CanvasElement) => ({ ...element }))
+                : [],
+            },
+            snapshot: canvasLayout.snapshot ?? null,
+          })
+          autoLayoutInitializedRef.current = true
+        } else {
+          setWorksheetLayout({ scene: createEmptyCanvasScene(), snapshot: null })
+          autoLayoutInitializedRef.current = false
+        }
 
         setWorksheetFeedback(`Загружен рабочий лист «${worksheet.title ?? 'Без названия'}».`)
         setCurrentStep(1)
@@ -458,6 +584,33 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
     })
   }, [exercises, search, selectedType])
 
+  const selectedExerciseIds = React.useMemo(() => {
+    const ids = selectedItems
+      .map((item) => item.exercise?.id)
+      .filter((id): id is number => typeof id === 'number')
+    return new Set(ids)
+  }, [selectedItems])
+
+  const exerciseTypes = React.useMemo(() => {
+    const unique = new Set<string>()
+    exercises.forEach((exercise) => {
+      if (exercise.type) {
+        unique.add(exercise.type)
+      }
+    })
+    return Array.from(unique).sort((a, b) => (TYPE_LABELS[a] ?? a).localeCompare(TYPE_LABELS[b] ?? b, 'ru'))
+  }, [exercises])
+
+  const getTypeLabel = React.useCallback((type: string) => TYPE_LABELS[type] ?? type, [])
+
+  React.useEffect(() => {
+    if (selectedType === 'all') return
+    if (exerciseTypes.length === 0) return
+    if (!exerciseTypes.includes(selectedType)) {
+      setSelectedType('all')
+    }
+  }, [exerciseTypes, selectedType])
+
   React.useEffect(() => {
     const loadPresets = async () => {
       setPresetsLoading(true)
@@ -482,12 +635,18 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
     (presetId: string, options: { silent?: boolean } = {}) => {
       const { silent = false } = options
       if (!presetId) {
-        if (!silent) setPresetFeedback('Выберите пресет для применения.')
+        if (!silent) {
+          setPresetFeedbackVariant('info')
+          setPresetFeedback('Выберите пресет для применения.')
+        }
         return
       }
       const preset = presets.find((p) => String(p.id) === presetId)
       if (!preset) {
-        if (!silent) setPresetFeedback('Пресет не найден.')
+        if (!silent) {
+          setPresetFeedbackVariant('destructive')
+          setPresetFeedback('Пресет не найден.')
+        }
         return
       }
       setSelectedPresetId(String(preset.id))
@@ -517,6 +676,7 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
         }
       })
       if (!silent) {
+        setPresetFeedbackVariant('success')
         setPresetFeedback(`Пресет «${preset.name}» применён.`)
       }
     },
@@ -549,13 +709,19 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
     (layoutId: string, options: { silent?: boolean } = {}) => {
       const { silent = false } = options
       if (!layoutId) {
-        if (!silent) setLayoutFeedback('Выберите макет для применения.')
+        if (!silent) {
+          setLayoutFeedbackVariant('info')
+          setLayoutFeedback('Выберите макет для применения.')
+        }
         return
       }
 
       const layout = layouts.find((l) => String(l.id) === layoutId)
       if (!layout) {
-        if (!silent) setLayoutFeedback('Макет не найден.')
+        if (!silent) {
+          setLayoutFeedbackVariant('destructive')
+          setLayoutFeedback('Макет не найден.')
+        }
         return
       }
 
@@ -563,7 +729,21 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
       setLayoutName(layout.name)
       setHeaderHtml(layout.header_html ?? '')
       setFooterHtml(layout.footer_html ?? '')
+      const layoutCanvas = layout.meta?.canvas_layout as CanvasLayoutValue | undefined
+      if (layoutCanvas?.scene) {
+        setWorksheetLayout({
+          scene: {
+            ...layoutCanvas.scene,
+            elements: Array.isArray(layoutCanvas.scene.elements)
+              ? layoutCanvas.scene.elements.map((element: CanvasElement) => ({ ...element }))
+              : [],
+          },
+          snapshot: layoutCanvas.snapshot ?? null,
+        })
+        autoLayoutInitializedRef.current = true
+      }
       if (!silent) {
+        setLayoutFeedbackVariant('success')
         setLayoutFeedback(`Макет «${layout.name}» применён.`)
       }
     },
@@ -592,6 +772,7 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
     const rawName = overrideName ?? layoutName
     const name = rawName.trim()
     if (!name) {
+      setLayoutFeedbackVariant('info')
       setLayoutFeedback('Введите название макета.')
       return false
     }
@@ -612,7 +793,10 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
           name,
           header_html: headerHtml,
           footer_html: footerHtml,
-          meta: existingLayout.meta ?? {},
+          meta: {
+            ...(existingLayout.meta ?? {}),
+            canvas_layout: worksheetLayout,
+          },
         }
 
         const response = await apiFetch(`/api/worksheet-layouts/${existingLayout.id}`, {
@@ -632,9 +816,11 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
         )
         setSelectedLayoutId(String(layout.id))
         setLayoutName(layout.name)
+        setLayoutFeedbackVariant('success')
         setLayoutFeedback(`Макет «${layout.name}» обновлён.`)
         return true
       } catch (error: any) {
+        setLayoutFeedbackVariant('destructive')
         setLayoutFeedback(error?.message ?? 'Не удалось обновить макет.')
         return false
       } finally {
@@ -649,7 +835,9 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
         name,
         header_html: headerHtml,
         footer_html: footerHtml,
-        meta: {},
+        meta: {
+          canvas_layout: worksheetLayout,
+        },
       }
       const response = await apiFetch('/api/worksheet-layouts', {
         method: 'POST',
@@ -662,9 +850,11 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
       const layout: WorksheetLayout = data?.data ?? data
       setLayouts((prev) => [layout, ...prev])
       setSelectedLayoutId(String(layout.id))
+      setLayoutFeedbackVariant('success')
       setLayoutFeedback(`Макет «${layout.name}» сохранён.`)
       return true
     } catch (error: any) {
+      setLayoutFeedbackVariant('destructive')
       setLayoutFeedback(error?.message ?? 'Не удалось сохранить макет.')
       return false
     } finally {
@@ -674,6 +864,7 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
 
   const handleUpdateLayout = async (overrideName?: string) => {
     if (!selectedLayoutId) {
+      setLayoutFeedbackVariant('info')
       setLayoutFeedback('Выберите макет для обновления.')
       return false
     }
@@ -691,6 +882,7 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
         String(layout.id) !== selectedLayoutId
     )
     if (duplicate) {
+      setLayoutFeedbackVariant('info')
       setLayoutFeedback('Макет с таким названием уже существует.')
       return false
     }
@@ -702,7 +894,10 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
         name,
         header_html: headerHtml,
         footer_html: footerHtml,
-        meta: selectedLayout?.meta ?? {},
+        meta: {
+          ...(selectedLayout?.meta ?? {}),
+          canvas_layout: worksheetLayout,
+        },
       }
 
       const response = await apiFetch(`/api/worksheet-layouts/${selectedLayoutId}`, {
@@ -721,9 +916,11 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
         )
       )
       setLayoutName(layout.name)
+      setLayoutFeedbackVariant('success')
       setLayoutFeedback(`Макет «${layout.name}» обновлён.`)
       return true
     } catch (error: any) {
+      setLayoutFeedbackVariant('destructive')
       setLayoutFeedback(error?.message ?? 'Не удалось обновить макет.')
       return false
     } finally {
@@ -734,6 +931,7 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
   const handleSetDefaultLayout = async (layoutId?: string) => {
     const targetId = layoutId ?? selectedLayoutId
     if (!targetId) {
+      setLayoutFeedbackVariant('info')
       setLayoutFeedback('Выберите макет для назначения по умолчанию.')
       return
     }
@@ -757,8 +955,10 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
         )
       )
       setSelectedLayoutId(String(layout.id))
+      setLayoutFeedbackVariant('success')
       setLayoutFeedback(`Макет «${layout.name}» установлен по умолчанию.`)
     } catch (error: any) {
+      setLayoutFeedbackVariant('destructive')
       setLayoutFeedback(error?.message ?? 'Не удалось назначить макет по умолчанию.')
     } finally {
       setLayoutDefaulting(false)
@@ -768,6 +968,7 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
   const handleDeleteLayout = async (layoutId?: string) => {
     const targetId = layoutId ?? selectedLayoutId
     if (!targetId) {
+      setLayoutFeedbackVariant('info')
       setLayoutFeedback('Выберите макет для удаления.')
       return
     }
@@ -786,8 +987,10 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
         setSelectedLayoutId('')
         setLayoutName('')
       }
+      setLayoutFeedbackVariant('success')
       setLayoutFeedback('Макет удалён.')
     } catch (error: any) {
+      setLayoutFeedbackVariant('destructive')
       setLayoutFeedback(error?.message ?? 'Не удалось удалить макет.')
     } finally {
       setLayoutDeleting(false)
@@ -798,6 +1001,7 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
     const rawName = overrideName ?? presetName
     const name = rawName.trim()
     if (!name) {
+      setPresetFeedbackVariant('info')
       setPresetFeedback('Введите название для пресета.')
       return false
     }
@@ -832,9 +1036,11 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
       const preset: WorksheetPreset = data?.data ?? data
       setPresets((prev) => [preset, ...prev])
       setSelectedPresetId(String(preset.id))
+      setPresetFeedbackVariant('success')
       setPresetFeedback(`Пресет «${preset.name}» сохранён.`)
       return true
     } catch (error: any) {
+      setPresetFeedbackVariant('destructive')
       setPresetFeedback(error?.message ?? 'Не удалось сохранить пресет.')
       return false
     } finally {
@@ -844,6 +1050,7 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
 
   const handleUpdatePreset = async () => {
     if (!selectedPresetId) {
+      setPresetFeedbackVariant('info')
       setPresetFeedback('Выберите пресет для обновления.')
       return
     }
@@ -879,8 +1086,10 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
         )
       )
       setPresetName(preset.name)
+      setPresetFeedbackVariant('success')
       setPresetFeedback(`Пресет «${preset.name}» обновлён.`)
     } catch (error: any) {
+      setPresetFeedbackVariant('destructive')
       setPresetFeedback(error?.message ?? 'Не удалось обновить пресет.')
     } finally {
       setPresetUpdating(false)
@@ -890,6 +1099,7 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
   const handleDeletePreset = async (presetId?: string) => {
     const targetId = presetId ?? selectedPresetId
     if (!targetId) {
+      setPresetFeedbackVariant('info')
       setPresetFeedback('Выберите пресет для удаления.')
       return
     }
@@ -908,8 +1118,10 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
         setSelectedPresetId('')
         setPresetName('')
       }
+      setPresetFeedbackVariant('success')
       setPresetFeedback('Пресет удалён.')
     } catch (error: any) {
+      setPresetFeedbackVariant('destructive')
       setPresetFeedback(error?.message ?? 'Не удалось удалить пресет.')
     } finally {
       setPresetDeleting(false)
@@ -919,6 +1131,7 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
   const handleSetDefaultPreset = async (presetId?: string) => {
     const targetId = presetId ?? selectedPresetId
     if (!targetId) {
+      setPresetFeedbackVariant('info')
       setPresetFeedback('Выберите пресет для назначения по умолчанию.')
       return
     }
@@ -942,8 +1155,10 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
         )
       )
       setSelectedPresetId(String(preset.id))
+      setPresetFeedbackVariant('success')
       setPresetFeedback(`Пресет «${preset.name}» установлен по умолчанию.`)
     } catch (error: any) {
+      setPresetFeedbackVariant('destructive')
       setPresetFeedback(error?.message ?? 'Не удалось назначить пресет по умолчанию.')
     } finally {
       setPresetDefaulting(false)
@@ -971,6 +1186,18 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
     ])
     setWorksheetFeedback(null)
   }
+
+  const removeExerciseById = React.useCallback((exerciseId: number) => {
+    setSelectedItems((prev) => {
+      const index = prev.findIndex((item) => item.exercise?.id === exerciseId)
+      if (index === -1) {
+        return prev
+      }
+      const next = [...prev]
+      next.splice(index, 1)
+      return next
+    })
+  }, [])
 
   const removeItem = (key: string) => {
     setSelectedItems((prev) => prev.filter((item) => item.key !== key))
@@ -1018,6 +1245,7 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
                 age: childContext.age ?? null,
               }
             : null,
+          canvas_layout: worksheetLayout,
         },
         items: selectedItems.map((item, index) => ({
           exercise_id: item.exercise?.id ?? null,
@@ -1146,6 +1374,7 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
           <div className="relative flex-1">
             <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
+              ref={searchInputRef}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Поиск по названию или описанию"
@@ -1158,48 +1387,146 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
             className="h-10 w-[140px] rounded-md border border-border bg-background px-3 text-sm"
           >
             <option value="all">Все типы</option>
-            <option value="pronunciation">Произношение</option>
-            <option value="articulation">Артикуляция</option>
-            <option value="rhythm">Ритм</option>
-            <option value="memory">Память</option>
-            <option value="other">Прочее</option>
+            {exerciseTypes.map((type) => (
+              <option key={type} value={type}>
+                {getTypeLabel(type)}
+              </option>
+            ))}
           </select>
         </div>
+
+        {(search.trim() || selectedType !== 'all') && (
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1 text-muted-foreground/80">
+              <Filter className="h-3.5 w-3.5" />
+              <span className="font-medium uppercase tracking-wide">Активные фильтры:</span>
+            </div>
+            {search.trim() && (
+              <Badge variant="secondary" className="flex items-center gap-1">
+                Поиск: {search.trim()}
+                <button
+                  type="button"
+                  className="rounded-full p-0.5 transition hover:bg-secondary/80"
+                  onClick={() => setSearch('')}
+                  aria-label="Сбросить поиск"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {selectedType !== 'all' && (
+              <Badge variant="secondary" className="flex items-center gap-1 capitalize">
+                Тип: {selectedType}
+                <button
+                  type="button"
+                  className="rounded-full p-0.5 transition hover:bg-secondary/80"
+                  onClick={() => setSelectedType('all')}
+                  aria-label="Сбросить фильтр по типу"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSearch('')
+                setSelectedType('all')
+              }}
+            >
+              Сбросить все
+            </Button>
+          </div>
+        )}
 
         {exercisesLoading ? (
           <p className="text-sm text-muted-foreground">Загрузка упражнений...</p>
         ) : exercisesError ? (
           <p className="text-sm text-destructive">{exercisesError}</p>
         ) : (
-          <div className="h-[420px] space-y-3 overflow-y-auto pr-4">
+          <div className="h-[420px] space-y-3 overflow-y-auto -mr-4 pr-4">
             {filteredExercises.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Упражнения не найдены. Попробуйте изменить фильтры.</p>
-            ) : (
-              filteredExercises.map((exercise) => (
-                <div
-                  key={exercise.id}
-                  className="rounded-lg border border-border bg-card p-4 shadow-sm"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-semibold text-foreground">{exercise.title}</h4>
-                        <Badge variant="secondary">{exercise.type}</Badge>
-                        <Badge variant="outline">{exercise.difficulty}</Badge>
-                      </div>
-                      {exercise.description ? (
-                        <p className="text-sm text-muted-foreground line-clamp-3">
-                          {exercise.description}
-                        </p>
-                      ) : null}
-                    </div>
-                    <Button size="sm" onClick={() => addExerciseToWorksheet(exercise)}>
-                      <Play className="mr-2 h-4 w-4" />
-                      Добавить
-                    </Button>
-                  </div>
+              <div className="space-y-3 rounded-md border border-dashed border-border p-6 text-sm text-muted-foreground">
+                <p>Упражнения не найдены. Попробуйте изменить условия поиска.</p>
+                <div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      setSearch('')
+                      setSelectedType('all')
+                      searchInputRef.current?.focus()
+                    }}
+                  >
+                    Сбросить фильтры
+                  </Button>
                 </div>
-              ))
+              </div>
+            ) : (
+              filteredExercises.map((exercise) => {
+                const isSelected = selectedExerciseIds.has(exercise.id)
+                const tags = Array.isArray(exercise.content?.tags)
+                  ? exercise.content.tags.filter((tag: unknown): tag is string => typeof tag === 'string' && tag.trim().length > 0)
+                  : []
+                return (
+                  <div
+                    key={exercise.id}
+                    className={cn(
+                      'flex w-full flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-sm transition hover:border-primary hover:shadow-md',
+                      isSelected ? 'border-primary/60 bg-primary/5' : ''
+                    )}
+                  >
+                    <div className="flex flex-col gap-2">
+                      <div className="flex flex-wrap items-center text-sm">
+                        <span className="font-semibold text-foreground">
+                          {exercise.title || 'Без названия'}
+                        </span>
+                        {exercise.description ? (
+                          <span className="text-sm text-muted-foreground">
+                            {'\u00A0—\u00A0'}
+                            {exercise.description}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="secondary" className="capitalize">
+                          {getTypeLabel(exercise.type)}
+                        </Badge>
+                        <Badge variant="outline">{exercise.difficulty}</Badge>
+                        {tags.map((tag: string) => (
+                          <Badge key={tag} variant="secondary" className="bg-muted text-muted-foreground">
+                            {tag}
+                          </Badge>
+                        ))}
+                        {isSelected ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="group order-last border-emerald-500 text-emerald-600 transition-colors hover:border-red-500 hover:bg-red-50 hover:text-red-600 sm:ml-auto"
+                            onClick={() => removeExerciseById(exercise.id)}
+                          >
+                            <Check className="mr-2 h-4 w-4 group-hover:hidden" />
+                            <Trash2 className="mr-2 hidden h-4 w-4 group-hover:block" />
+                            <span className="group-hover:hidden">В листе</span>
+                            <span className="hidden group-hover:inline">Удалить</span>
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            className="order-last sm:ml-auto"
+                            onClick={() => addExerciseToWorksheet(exercise)}
+                          >
+                            <Play className="mr-2 h-4 w-4" />
+                            Добавить
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })
             )}
           </div>
         )}
@@ -1217,8 +1544,20 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
       </CardHeader>
       <CardContent className="space-y-4">
         {selectedItems.length === 0 ? (
-          <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-            Добавленные упражнения появятся здесь.
+          <div className="space-y-3 rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+            <p>Добавленные упражнения появятся здесь.</p>
+            <div className="flex justify-center">
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                  searchInputRef.current?.focus()
+                }}
+              >
+                Перейти к поиску упражнений
+              </Button>
+            </div>
           </div>
         ) : (
           selectedItems.map((item, index) => (
@@ -1592,16 +1931,9 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
               </div>
 
               {presetFeedback ? (
-                <p
-                  className={cn(
-                    'text-xs',
-                    presetFeedback.toLowerCase().includes('ошибка') || presetFeedback.toLowerCase().includes('не удалось')
-                      ? 'text-destructive'
-                      : 'text-muted-foreground'
-                  )}
-                >
-                  {presetFeedback}
-                </p>
+                <Alert variant={presetFeedbackVariant} icon={presetFeedbackVariant === 'destructive' ? <AlertCircle className="h-4 w-4" /> : <Info className="h-4 w-4" />}>
+                  <AlertDescription>{presetFeedback}</AlertDescription>
+                </Alert>
               ) : null}
             </div>
           </div>
@@ -1784,17 +2116,26 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
 
         </Accordion>
 
+        <div className="space-y-3 rounded-md border border-border bg-background p-4 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-foreground">Визуальный макет листа</p>
+              <p className="text-xs text-muted-foreground">Используйте Canvas, чтобы расположить упражнения, шапку и футер перед печатью.</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleRebuildWorksheetLayout}>
+              <RefreshCw className="mr-2 h-4 w-4" /> Сформировать макет заново
+            </Button>
+          </div>
+          <WorksheetLayoutEditor value={worksheetLayout} onChange={handleWorksheetLayoutChange} />
+        </div>
+
         {worksheetFeedback ? (
-          <p
-            className={cn(
-              'text-sm',
-              worksheetFeedback.toLowerCase().includes('ошибка') || worksheetFeedback.toLowerCase().includes('не удалось')
-                ? 'text-destructive'
-                : 'text-muted-foreground'
-            )}
+          <Alert
+            variant={worksheetFeedback.toLowerCase().includes('ошибка') || worksheetFeedback.toLowerCase().includes('не удалось') ? 'destructive' : 'success'}
+            icon={worksheetFeedback.toLowerCase().includes('ошибка') || worksheetFeedback.toLowerCase().includes('не удалось') ? <AlertCircle className="h-4 w-4" /> : <Check className="h-4 w-4" />}
           >
-            {worksheetFeedback}
-          </p>
+            <AlertDescription>{worksheetFeedback}</AlertDescription>
+          </Alert>
         ) : null}
       </CardHeader>
 
@@ -1936,17 +2277,13 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
             </div>
           ) : null}
         </div>
-        {worksheetFeedback ? (
-          <p
-            className={cn(
-              'text-sm',
-              worksheetFeedback.toLowerCase().includes('ошибка') || worksheetFeedback.toLowerCase().includes('не удалось')
-                ? 'text-destructive'
-                : 'text-muted-foreground'
-            )}
+        {layoutFeedback ? (
+          <Alert
+            variant={layoutFeedbackVariant}
+            icon={layoutFeedbackVariant === 'destructive' ? <AlertCircle className="h-4 w-4" /> : <Info className="h-4 w-4" />}
           >
-            {worksheetFeedback}
-          </p>
+            <AlertDescription>{layoutFeedback}</AlertDescription>
+          </Alert>
         ) : null}
       </CardHeader>
       <CardContent className="space-y-6">
@@ -1957,7 +2294,7 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
               В лист не добавлены задания.
             </div>
           ) : (
-            selectedItems.map((item, index) => (
+            selectedItems.map((item: SelectedWorksheetItem, index: number) => (
               <div key={item.key} className="space-y-2 rounded-lg border border-border bg-background p-4 shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="font-medium text-foreground">
@@ -1970,7 +2307,7 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
                 </div>
                 {item.instructions.length ? (
                   <ul className="list-disc pl-4 text-sm text-muted-foreground">
-                    {item.instructions.map((instruction, idx) => (
+                    {item.instructions.map((instruction: string, idx: number) => (
                       <li key={idx}>{instruction}</li>
                     ))}
                   </ul>
@@ -1983,7 +2320,7 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
         </div>
         <div className="flex flex-wrap gap-2">
           <Button onClick={handleSaveWorksheet} disabled={saving}>
-            <Save className="mr-2 h-4 w-4" />
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
             {saving ? 'Сохранение...' : 'Сохранить лист'}
           </Button>
           <Button variant="outline" onClick={handlePrint}>
@@ -1991,7 +2328,7 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
             Печать
           </Button>
           <Button variant="outline" onClick={handleDownloadPdf} disabled={downloading}>
-            <Download className="mr-2 h-4 w-4" />
+            {downloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
             {downloading ? 'Загрузка...' : 'PDF'}
           </Button>
           {savedWorksheetId ? (
@@ -2062,27 +2399,42 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
 
       {renderStepContent()}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-        <Button
-          variant="outline"
-          onClick={() => handleStepChange(currentStep - 1)}
-          disabled={currentStep === 0}
-        >
-          Назад
-        </Button>
-
-        <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+      <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-background/90 p-4 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/70">
+        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <span className="rounded-md border border-border bg-muted/60 px-2 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Шаг {currentStep + 1} из {steps.length}
+          </span>
           {currentStep === 0 && !selectedItems.length ? (
-            <span className="text-sm text-destructive">Добавьте минимум одно упражнение, чтобы продолжить.</span>
+            <span className="flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs text-blue-700">
+              <Info className="h-3.5 w-3.5" /> Добавьте минимум одно упражнение, чтобы продолжить.
+            </span>
           ) : null}
           {currentStep > 0 && selectedItems.length === 0 ? (
-            <span className="text-sm text-destructive">В листе нет заданий — добавьте их на первом шаге перед сохранением.</span>
+            <span className="flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700">
+              <AlertCircle className="h-3.5 w-3.5" /> В листе нет заданий — вернитесь на шаг выбора.
+            </span>
           ) : null}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => handleStepChange(currentStep - 1)}
+            disabled={currentStep === 0}
+          >
+            Назад
+          </Button>
+
           {currentStep < steps.length - 1 ? (
             <Button onClick={() => handleStepChange(currentStep + 1)} disabled={!canProceed}>
               Далее{nextStepLabel ? `: ${nextStepLabel}` : ''}
             </Button>
-          ) : null}
+          ) : (
+            <Button onClick={handleSaveWorksheet} disabled={saving || selectedItems.length === 0}>
+              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+              {saving ? 'Сохранение...' : 'Сохранить'}
+            </Button>
+          )}
         </div>
       </div>
     </div>

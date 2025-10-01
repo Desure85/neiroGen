@@ -1,46 +1,50 @@
 package api
 
-// GenerateRequest describes input parameters for the graphic dictation generator.
-// When jobs are sharded, multiple requests with the same JobID are dispatched
-// and ShardIndex ranges from 0 to ShardTotal-1.
-type GenerateRequest struct {
-	JobID          string  `json:"job_id"`
-	ShardIndex     int     `json:"shard_index"`
-	ShardTotal     int     `json:"shard_total"`
-	SourceImage    string  `json:"source_image"`  // Image URL or base64 for contour tracing
-	Description    string  `json:"description"`    // Text description of shape to generate
-	ShapeName      string  `json:"shape_name"`     // Optional: specific shape name
-	GridWidth      int     `json:"grid_width"`
-	GridHeight     int     `json:"grid_height"`
-	CellSizeMM     int     `json:"cell_size_mm"`
-	Difficulty     string  `json:"difficulty"`     // easy, medium, hard
-	AllowDiagonals bool    `json:"allow_diagonals"`
-	IncludeHoles   bool    `json:"include_holes"`  // Include internal holes in contour
-	Simplification float64 `json:"simplification"` // Douglas-Peucker epsilon (0.5-3.0, default 1.5)
-	Smoothing      int     `json:"smoothing"`      // Smoothing iterations (0-5, default 0)
-	ImageThreshold float64 `json:"image_threshold"`
-	ImageBlurRadius float64 `json:"image_blur_radius"`
-	ImageInvert    bool    `json:"image_invert"`
-}
+import "encoding/json"
 
-// Command represents a single drawing instruction.
+// Command представляет отдельную инструкцию графического диктанта.
 type Command struct {
-	Direction string `json:"direction"`
+	Action    string `json:"action"`
+	Direction string `json:"direction,omitempty"`
 	Steps     int    `json:"steps,omitempty"`
-	TargetRow int    `json:"target_row,omitempty"`
-	TargetCol int    `json:"target_col,omitempty"`
 }
 
-// GenerateResponse is returned to the caller once dictation is generated.
-// Each shard produces a partial response that can be merged on the PHP side.
+// GenerateRequest описывает входной запрос на генерацию графического диктанта.
+type GenerateRequest struct {
+	JobID           string  `json:"job_id"`
+	ShardIndex      int     `json:"shard_index"`
+	ShardTotal      int     `json:"shard_total"`
+	GridWidth       int     `json:"grid_width"`
+	GridHeight      int     `json:"grid_height"`
+	CellSizeMM      int     `json:"cell_size_mm"`
+	AllowDiagonals  bool    `json:"allow_diagonals"`
+	ShapeName       string  `json:"shape_name"`
+	Description     string  `json:"description"`
+	Difficulty      string  `json:"difficulty"`
+	SourceImage     string  `json:"source_image"`
+	IncludeHoles    bool    `json:"include_holes"`
+	ImageBlurRadius float64 `json:"image_blur_radius"`
+	ImageThreshold  float64 `json:"image_threshold"`
+	ImageInvert     bool    `json:"image_invert"`
+	Simplification  float64 `json:"simplification"`
+	Smoothing       int     `json:"smoothing"`
+}
+
+// GenerateResponse описывает результат генерации путей и предпросмотров.
 type GenerateResponse struct {
 	JobID           string    `json:"job_id"`
 	ShardIndex      int       `json:"shard_index"`
 	ShardTotal      int       `json:"shard_total"`
-	PreviewImageURL string    `json:"preview_image_url"`
-	PreviewSvgURL   string    `json:"preview_svg_url,omitempty"`
 	StartRow        int       `json:"start_row"`
 	StartCol        int       `json:"start_col"`
 	Commands        []Command `json:"commands"`
-	Instructions    []string  `json:"instructions"`
+	Instructions    string    `json:"instructions"`
+	PreviewImageURL string    `json:"preview_image_url"`
+	PreviewSVGURL   string    `json:"preview_svg_url"`
+}
+
+// MarshalJSON обеспечивает стабильный порядок полей, если понадобится сериализация вручную.
+func (r GenerateResponse) MarshalJSON() ([]byte, error) {
+	type alias GenerateResponse
+	return json.Marshal(alias(r))
 }
