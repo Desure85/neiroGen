@@ -98,8 +98,8 @@ go-build-binary: ## Build Go binary using docker builder, usage: make go-build-b
 
 # Full stack commands
 install: up composer frontend-install migrate ## Setup project from scratch
-dev-backend: ## Start backend services (app, db, redis, svggen) in background
-	docker compose up -d app db redis svggen
+dev-backend: ## Start backend services (app, db, redis) in background
+	docker compose up -d app db redis
 dev-all: dev-backend ## Start full dev: backend in background, then run frontend dev (Ctrl+C to stop dev server)
 	$(MAKE) frontend-dev
 dev: dev-all ## Alias for dev-all

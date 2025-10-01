@@ -87,6 +87,8 @@ export function GraphicDictationGenerator({ onResult, onSvgGenerated, prompt, wi
   const [isPolling, setIsPolling] = useState(false)
   const [localFile, setLocalFile] = useState<File | null>(null)
   const [localPreview, setLocalPreview] = useState<string | null>(null)
+  const [localFileDataUrl, setLocalFileDataUrl] = useState<string | null>(null)
+  const [localFileLabel, setLocalFileLabel] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const hasResult = useMemo(() => Boolean(result?.commands?.length), [result])
@@ -123,8 +125,12 @@ export function GraphicDictationGenerator({ onResult, onSvgGenerated, prompt, wi
     try {
       let sourceImage = form.sourceImage.trim()
       if (localFile) {
-        const dataUrl = await fileToDataUrl(localFile)
+        const dataUrl = localFileDataUrl ?? (await fileToDataUrl(localFile))
         sourceImage = dataUrl
+        setForm((prev) => ({ ...prev, sourceImage: dataUrl }))
+        if (!localFileDataUrl) {
+          setLocalFileDataUrl(dataUrl)
+        }
       }
 
       // Template mode validation
@@ -235,6 +241,8 @@ export function GraphicDictationGenerator({ onResult, onSvgGenerated, prompt, wi
     }
     setLocalFile(null)
     setLocalPreview(null)
+    setLocalFileDataUrl(null)
+    setLocalFileLabel(null)
   }, [localPreview])
 
   useEffect(() => () => clearLocalFile(), [clearLocalFile])
@@ -272,9 +280,12 @@ export function GraphicDictationGenerator({ onResult, onSvgGenerated, prompt, wi
       try {
         await loadPromise
         clearLocalFile()
+        const dataUrl = await fileToDataUrl(file)
         setLocalFile(file)
+        setLocalFileDataUrl(dataUrl)
+        setLocalFileLabel(`[локальный файл] ${file.name}`)
         setLocalPreview(imageUrl)
-        setForm((prev) => ({ ...prev, sourceImage: `[локальный файл] ${file.name}` }))
+        setForm((prev) => ({ ...prev, sourceImage: dataUrl }))
         setError(null)
       } catch (validationErr: any) {
         URL.revokeObjectURL(imageUrl)
@@ -377,7 +388,7 @@ export function GraphicDictationGenerator({ onResult, onSvgGenerated, prompt, wi
                 <Input
                   id="gd-source"
                   placeholder="URL или локальный файл"
-                  value={form.sourceImage}
+                  value={localFile ? `Локальный файл: ${localFileLabel ?? ""}` : form.sourceImage}
                   onChange={(e) => {
                     clearLocalFile()
                     setForm((prev) => ({ ...prev, sourceImage: e.target.value }))

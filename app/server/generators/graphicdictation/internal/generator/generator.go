@@ -52,8 +52,8 @@ func ValidateRequest(req api.GenerateRequest) error {
 	if req.ShardIndex < 0 || req.ShardIndex >= req.ShardTotal {
 		return fmt.Errorf("invalid shard index")
 	}
-	if req.ShapeName == "" && strings.TrimSpace(req.SourceImage) == "" {
-		return fmt.Errorf("either shape_name or source_image must be provided")
+	if strings.TrimSpace(req.ShapeName) == "" && strings.TrimSpace(req.SourceImage) == "" && strings.TrimSpace(req.Description) == "" {
+		return fmt.Errorf("either shape_name, description or source_image must be provided")
 	}
 	return nil
 }

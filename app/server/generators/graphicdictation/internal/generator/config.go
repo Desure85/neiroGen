@@ -1,22 +1,22 @@
 package generator
 
 import (
-	"context"
-	"errors"
-	"fmt"
-	"io"
-	"net"
-	"net/http"
-	"net/url"
-	"os"
-	"regexp"
-	"strconv"
-	"strings"
-	"sync"
-	"time"
+    "context"
+    "errors"
+    "fmt"
+    "io"
+    "net"
+    "net/http"
+    "net/url"
+    "os"
+    "regexp"
+    "strconv"
+    "strings"
+    "sync"
+    "time"
 
-	"github.com/minio/minio-go/v7"
-	"github.com/minio/minio-go/v7/pkg/credentials"
+    "github.com/minio/minio-go/v7"
+    "github.com/minio/minio-go/v7/pkg/credentials"
 )
 
 const (
@@ -44,10 +44,11 @@ var (
 
 func init() {
 	http.DefaultClient.Timeout = remoteDownloadTimeout
+	noProxy := func(*http.Request) (*url.URL, error) { return nil, nil }
 	remoteHTTPClient = &http.Client{
 		Timeout: remoteDownloadTimeout,
 		Transport: &http.Transport{
-			Proxy:                 http.ProxyFromEnvironment,
+			Proxy:                 noProxy,
 			DialContext:           (&net.Dialer{Timeout: 5 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
 			ForceAttemptHTTP2:     true,
 			MaxIdleConns:          64,
@@ -112,10 +113,22 @@ func initMinio() error {
 
 	region := strings.TrimSpace(os.Getenv("MINIO_REGION"))
 
+	noProxy := func(*http.Request) (*url.URL, error) { return nil, nil }
+	transport := &http.Transport{
+		Proxy:                 noProxy,
+		DialContext:           (&net.Dialer{Timeout: 5 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          64,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   5 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+
 	opts := &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
 		Secure: secure,
 		Region: region,
+		Transport: transport,
 	}
 
 	client, err := minio.New(host, opts)
