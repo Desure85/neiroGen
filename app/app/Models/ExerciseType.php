@@ -24,7 +24,7 @@ class ExerciseType extends Model
     protected $casts = [
         'is_active' => 'boolean',
         'display_order' => 'integer',
-        'meta' => 'array',
+        'meta' => 'json',
     ];
 
     public function fields(): HasMany

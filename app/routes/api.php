@@ -10,6 +10,8 @@ use App\Http\Controllers\Api\AdaptiveExerciseController;
 use App\Http\Controllers\Api\ContentBlockController;
 use App\Http\Controllers\Api\ExerciseTypesController;
 use App\Http\Controllers\Api\ChildController;
+use App\Http\Controllers\Admin\ExerciseTypeController as AdminExerciseTypeController;
+use App\Http\Controllers\Admin\ExerciseTypeFieldController as AdminExerciseTypeFieldController;
 use App\Http\Controllers\Api\ExerciseSessionController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ExerciseTemplateController;
@@ -163,8 +165,20 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('comfy-presets/{comfyPreset}', [ComfyPresetController::class, 'show']);
     Route::post('/comfy/generate/{comfyPreset}', [ComfyGenerationController::class, 'generate']);
 });
-// Admin-only mutation routes
+// Admin-only routes
 Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
+    Route::prefix('admin')->group(function () {
+        Route::get('exercise-types', [AdminExerciseTypeController::class, 'index']);
+        Route::post('exercise-types', [AdminExerciseTypeController::class, 'store']);
+        Route::get('exercise-types/{exerciseType}', [AdminExerciseTypeController::class, 'show']);
+        Route::put('exercise-types/{exerciseType}', [AdminExerciseTypeController::class, 'update']);
+        Route::patch('exercise-types/{exerciseType}', [AdminExerciseTypeController::class, 'update']);
+        Route::delete('exercise-types/{exerciseType}', [AdminExerciseTypeController::class, 'destroy']);
+
+        Route::post('exercise-types/{exerciseType}/fields', [AdminExerciseTypeFieldController::class, 'store']);
+        Route::delete('exercise-types/{exerciseType}/fields/{exerciseTypeField}', [AdminExerciseTypeFieldController::class, 'destroy']);
+    });
+
     Route::post('comfy-presets', [ComfyPresetController::class, 'store']);
     Route::put('comfy-presets/{comfyPreset}', [ComfyPresetController::class, 'update']);
     Route::patch('comfy-presets/{comfyPreset}', [ComfyPresetController::class, 'update']);

@@ -30,8 +30,8 @@ class ExerciseTypeField extends Model
         'min_value' => 'float',
         'max_value' => 'float',
         'step' => 'float',
-        'default_value' => 'array',
-        'options' => 'array',
+        'default_value' => 'json',
+        'options' => 'json',
         'display_order' => 'integer',
     ];
 
