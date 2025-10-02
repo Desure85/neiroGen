@@ -42,16 +42,78 @@ export async function ensureCsrfCookie(force = false) {
   })
 }
 
-export async function apiFetch(input: string, init: RequestInit = {}) {
-  const url = input.startsWith('http')
-    ? input
+export interface ExerciseTypeDto {
+  id: number
+  key: string
+  name: string
+  domain: string | null
+  icon?: string | null
+  description?: string | null
+  is_active: boolean
+  display_order: number
+  fields?: Array<{
+    id: number
+    key: string
+    label: string
+    field_type: string
+    is_required: boolean
+    default_value?: unknown
+    options?: unknown
+    help_text?: string | null
+    display_order: number
+  }>
+}
+
+let cachedExerciseTypes: ExerciseTypeDto[] | null = null
+let exerciseTypesPromise: Promise<ExerciseTypeDto[]> | null = null
+
+export const fetchExerciseTypes = async (force = false): Promise<ExerciseTypeDto[]> => {
+  if (!force && cachedExerciseTypes) {
+    return cachedExerciseTypes
+  }
+
+  if (!force && exerciseTypesPromise) {
+    return exerciseTypesPromise
+  }
+
+  exerciseTypesPromise = (async () => {
+    const response = await apiFetch("/api/exercise-types")
+    if (!response.ok) {
+      throw new Error(`Не удалось загрузить типы упражнений (${response.status})`)
+    }
+    const body = await response.json()
+    const items: ExerciseTypeDto[] = Array.isArray(body?.data)
+      ? body.data
+      : Array.isArray(body?.types)
+        ? body.types
+        : []
+    cachedExerciseTypes = items
+    exerciseTypesPromise = null
+    return items
+  })()
+
+  try {
+    const result = await exerciseTypesPromise
+    exerciseTypesPromise = null
+    return result
+  } catch (err) {
+    exerciseTypesPromise = null
+    throw err
+  }
+}
+
+export const apiFetch = async (input: RequestInfo, init?: RequestInit) => {
+  const requestUrl = typeof input === 'string' ? input : input.url
+  const resolvedUrl = requestUrl.startsWith('http')
+    ? requestUrl
     : API_BASE
-      ? `${API_BASE}${input}`
-      : input.startsWith('/')
-        ? input
-        : `/${input}`
-  const method = (init.method || 'GET').toUpperCase()
-  const headers = new Headers(init.headers || {})
+      ? `${API_BASE}${requestUrl.startsWith('/') ? requestUrl : `/${requestUrl}`}`
+      : requestUrl.startsWith('/')
+        ? requestUrl
+        : `/${requestUrl}`
+
+  const method = (init?.method || 'GET').toUpperCase()
+  const headers = new Headers(init?.headers || {})
 
   if (!headers.has('Accept')) headers.set('Accept', 'application/json')
   if (!headers.has('X-Requested-With')) headers.set('X-Requested-With', 'XMLHttpRequest')
@@ -62,7 +124,7 @@ export async function apiFetch(input: string, init: RequestInit = {}) {
     if (token && !headers.has('X-XSRF-TOKEN')) headers.set('X-XSRF-TOKEN', token)
   }
 
-  const response = await fetch(url, {
+  const response = await fetch(resolvedUrl, {
     ...init,
     method,
     headers,

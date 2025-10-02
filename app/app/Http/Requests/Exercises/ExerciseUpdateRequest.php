@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Exercises;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class ExerciseUpdateRequest extends FormRequest
 {
@@ -19,7 +20,8 @@ class ExerciseUpdateRequest extends FormRequest
             'content' => ['sometimes', 'array'],
             'content.blocks' => ['sometimes', 'array'],
             'content.instructions' => ['sometimes', 'array'],
-            'type' => ['sometimes', 'string', 'max:100'],
+            'exercise_type_id' => ['sometimes', 'integer', 'exists:exercise_types,id'],
+            'type' => ['sometimes', 'string', 'max:100', Rule::exists('exercise_types', 'key')],
             'difficulty' => ['sometimes', 'in:easy,medium,hard'],
             'estimated_duration' => ['sometimes', 'integer', 'min:1', 'max:240'],
             'tags' => ['sometimes', 'nullable', 'array'],

@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useRef, useState, useEffect } from "react"
+import { useCallback, useRef, useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -17,6 +17,16 @@ interface Command {
   action: string
   direction?: string
   steps?: number
+}
+
+type SegmentType = 'horizontal' | 'vertical' | 'diagonal'
+
+interface SegmentInfo {
+  from: Point
+  to: Point
+  steps: number
+  type: SegmentType
+  arrow: string
 }
 
 interface GraphicDictationPayload {
@@ -68,6 +78,97 @@ function generateStaircasePath(from: Point, to: Point): Point[] {
   return path
 }
 
+const getArrowForDelta = (dx: number, dy: number): string => {
+  if (dx === 0 && dy === 0) return '•'
+  if (dx === 0) return dy > 0 ? '↓' : '↑'
+  if (dy === 0) return dx > 0 ? '→' : '←'
+
+  if (dx > 0 && dy < 0) return '↗'
+  if (dx > 0 && dy > 0) return '↘'
+  if (dx < 0 && dy < 0) return '↖'
+  return '↙'
+}
+
+const pluralizeSteps = (value: number): string => {
+  const steps = Math.abs(value)
+  const mod10 = steps % 10
+  const mod100 = steps % 100
+
+  if (mod10 === 1 && mod100 !== 11) {
+    return `${steps} шаг`
+  }
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    return `${steps} шага`
+  }
+  return `${steps} шагов`
+}
+
+const buildSegmentInfo = (from: Point, to: Point): SegmentInfo | null => {
+  const dx = to.col - from.col
+  const dy = to.row - from.row
+
+  if (dx === 0 && dy === 0) {
+    return null
+  }
+
+  let type: SegmentType
+  let steps = 0
+
+  if (dx === 0) {
+    type = 'vertical'
+    steps = Math.abs(dy)
+  } else if (dy === 0) {
+    type = 'horizontal'
+    steps = Math.abs(dx)
+  } else {
+    type = 'diagonal'
+    steps = Math.abs(dx) === Math.abs(dy) ? Math.abs(dx) : Math.max(Math.abs(dx), Math.abs(dy))
+  }
+
+  return {
+    from,
+    to,
+    steps,
+    type,
+    arrow: getArrowForDelta(dx, dy),
+  }
+}
+
+const buildSegments = (start: Point, points: Point[]): SegmentInfo[] => {
+  const segments: SegmentInfo[] = []
+  const pathPoints = [start, ...points]
+
+  for (let i = 0; i < pathPoints.length - 1; i++) {
+    const segment = buildSegmentInfo(pathPoints[i], pathPoints[i + 1])
+    if (segment) {
+      segments.push(segment)
+    }
+  }
+
+  return segments
+}
+
+const formatCoordinate = (point: Point): string => `(${point.row + 1},${point.col + 1})`
+
+const formatSegmentLabel = (segment: SegmentInfo): string => {
+  if (segment.type === 'diagonal') {
+    return `${segment.arrow} ${formatCoordinate(segment.from)} → ${formatCoordinate(segment.to)} (${pluralizeSteps(segment.steps)})`
+  }
+
+  return `${segment.arrow} ${pluralizeSteps(segment.steps)}`
+}
+
+const buildInstructionStrings = (start: Point, segments: SegmentInfo[]): string[] => {
+  const startArrow = segments[0]?.arrow ?? '•'
+  const lines: string[] = [`Карандаш: ${startArrow} ${formatCoordinate(start)}`]
+
+  segments.forEach((segment, index) => {
+    lines.push(`${index + 1}. ${formatSegmentLabel(segment)}`)
+  })
+
+  return lines
+}
+
 export function GraphicDictationEditor({ onSave, initialPayload }: GraphicDictationEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [gridWidth, setGridWidth] = useState(initialPayload?.grid.width ?? 16)
@@ -75,7 +176,7 @@ export function GraphicDictationEditor({ onSave, initialPayload }: GraphicDictat
   const [cellSizeMm, setCellSizeMm] = useState(initialPayload?.grid.cell_size_mm ?? 10)
   const [points, setPoints] = useState<Point[]>(initialPayload?.points ?? [])
   const [commands, setCommands] = useState<Command[]>(initialPayload?.commands ?? [])
-  const [allowDiagonals, setAllowDiagonals] = useState(false)
+  const [avoidCleanDiagonals, setAvoidCleanDiagonals] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [history, setHistory] = useState<Point[][]>([])
@@ -90,6 +191,9 @@ export function GraphicDictationEditor({ onSave, initialPayload }: GraphicDictat
   const [startPoint, setStartPoint] = useState<Point>(initialPayload?.start ?? { row: 0, col: 0 })
   const [isDraggingStart, setIsDraggingStart] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const segments = useMemo(() => buildSegments(startPoint, points), [startPoint, points])
+  const instructionLines = useMemo(() => buildInstructionStrings(startPoint, segments), [startPoint, segments])
 
   const CANVAS_PADDING = 40
 
@@ -446,22 +550,21 @@ export function GraphicDictationEditor({ onSave, initialPayload }: GraphicDictat
 
       // Add new point (with intermediate points if staircase needed)
       let pointsToAdd: Point[] = [point]
-      
+
       if (points.length > 0) {
         const lastPoint = points[points.length - 1]
         const pathType = getPathType(lastPoint, point)
-        
-        // Если это "лесенка", добавляем промежуточные точки
-        if (pathType === 'staircase') {
+
+        if (pathType === 'staircase' || (pathType === 'diagonal' && avoidCleanDiagonals)) {
           pointsToAdd = generateStaircasePath(lastPoint, point)
         }
       }
-      
+
       const newPoints = [...points, ...pointsToAdd]
       setPoints(newPoints)
       addToHistory(newPoints)
     },
-    [points, getGridPoint, startPoint, isDraggingStart]
+    [points, getGridPoint, startPoint, isDraggingStart, avoidCleanDiagonals]
   )
 
   const handleCanvasMouseMove = useCallback(
@@ -516,7 +619,8 @@ export function GraphicDictationEditor({ onSave, initialPayload }: GraphicDictat
         },
         body: JSON.stringify({
           points,
-          allow_diagonals: allowDiagonals,
+          allow_diagonals: true,
+          avoid_clean_diagonals: avoidCleanDiagonals,
         }),
       })
 
@@ -539,21 +643,7 @@ export function GraphicDictationEditor({ onSave, initialPayload }: GraphicDictat
     } finally {
       setIsGenerating(false)
     }
-  }, [points, allowDiagonals])
-
-  const formatDirectionRu = (direction: string): string => {
-    const map: Record<string, string> = {
-      'up': '↑',
-      'down': '↓',
-      'left': '←',
-      'right': '→',
-      'up-left': '↖',
-      'up-right': '↗',
-      'down-left': '↙',
-      'down-right': '↘',
-    }
-    return map[direction] || direction
-  }
+  }, [points, avoidCleanDiagonals])
 
   const handleSave = useCallback(() => {
     if (commands.length === 0) {
@@ -561,15 +651,7 @@ export function GraphicDictationEditor({ onSave, initialPayload }: GraphicDictat
       return
     }
 
-    // Формируем инструкции для пациента - все команды в одной строке
-    const commandsText = commands.map((cmd) => {
-      const steps = cmd.steps ?? 1
-      return `${formatDirectionRu(cmd.direction ?? 'unknown')}${steps}`
-    }).join(', ')
-    
-    const instructions: string[] = [
-      `Карандаш: (${startPoint.row + 1},${startPoint.col + 1}), ${commandsText}`
-    ]
+    const instructions = buildInstructionStrings(startPoint, segments)
 
     const payload: GraphicDictationPayload = {
       grid: {
@@ -584,7 +666,7 @@ export function GraphicDictationEditor({ onSave, initialPayload }: GraphicDictat
     }
 
     onSave?.(payload)
-  }, [commands, gridWidth, gridHeight, cellSizeMm, startPoint, points, onSave])
+  }, [commands, gridWidth, gridHeight, cellSizeMm, startPoint, segments, points, onSave])
 
   const handleClear = useCallback(() => {
     setPoints([])
@@ -872,16 +954,18 @@ export function GraphicDictationEditor({ onSave, initialPayload }: GraphicDictat
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
               <input
-                id="allow-diagonals"
+                id="avoid-clean-diagonals"
                 type="checkbox"
-                checked={allowDiagonals}
-                onChange={(e) => setAllowDiagonals(e.target.checked)}
+                checked={avoidCleanDiagonals}
+                onChange={(e) => setAvoidCleanDiagonals(e.target.checked)}
                 className="h-4 w-4"
               />
-              <Label htmlFor="allow-diagonals" className="text-sm">Диагонали</Label>
+              <Label htmlFor="avoid-clean-diagonals" className="text-sm">
+                Разбивать прямые диагонали на «ступеньки»
+              </Label>
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -1041,11 +1125,9 @@ export function GraphicDictationEditor({ onSave, initialPayload }: GraphicDictat
           {commands.length > 0 && (
             <div className="rounded-md border p-3 bg-muted/10">
               <div className="text-sm font-medium mb-2">Команды диктанта:</div>
-              <div className="text-xs space-y-1">
-                {commands.map((cmd, i) => (
-                  <div key={i} className="font-mono">
-                    {i + 1}. {cmd.direction} — {cmd.steps} {cmd.steps === 1 ? "шаг" : "шага"}
-                  </div>
+              <div className="text-xs space-y-1 font-mono">
+                {instructionLines.map((line, idx) => (
+                  <div key={idx}>{line}</div>
                 ))}
               </div>
             </div>

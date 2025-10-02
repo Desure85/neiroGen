@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
-import { apiFetch } from '@/lib/api'
+import { apiFetch, fetchExerciseTypes, type ExerciseTypeDto } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { RichTextEditor } from '@/components/worksheets/rich-text-editor'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -21,19 +21,21 @@ import {
   createEmptyCanvasScene,
 } from '@/components/worksheets/worksheet-layout-editor'
 
-const TYPE_LABELS: Record<string, string> = {
-  pronunciation: 'Произношение',
-  articulation: 'Артикуляция',
-  rhythm: 'Ритм',
-  memory: 'Память',
-  other: 'Прочее',
-}
+type ExerciseTypeMap = Record<string, ExerciseTypeDto>
 
 type Exercise = {
   id: number
   title: string
   description?: string | null
   type: string
+  exercise_type_id?: number | null
+  exerciseType?: {
+    id: number
+    key: string
+    name: string
+    icon?: string | null
+    domain?: string | null
+  } | null
   difficulty: 'easy' | 'medium' | 'hard'
   content: any
 }
@@ -127,6 +129,9 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
   const [exercisesError, setExercisesError] = React.useState<string | null>(null)
   const [search, setSearch] = React.useState('')
   const [selectedType, setSelectedType] = React.useState<string>('all')
+  const [exerciseTypes, setExerciseTypes] = React.useState<ExerciseTypeDto[]>([])
+  const [exerciseTypesMap, setExerciseTypesMap] = React.useState<ExerciseTypeMap>({})
+  const [exerciseTypesError, setExerciseTypesError] = React.useState<string | null>(null)
   const [selectedItems, setSelectedItems] = React.useState<SelectedWorksheetItem[]>([])
   const [currentStep, setCurrentStep] = React.useState(0)
   const [fields, setFields] = React.useState<WorksheetFieldState>(DEFAULT_FIELDS)
@@ -570,7 +575,24 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
       }
     }
 
-    loadExercises()
+    const loadTypes = async () => {
+      try {
+        setExerciseTypesError(null)
+        const items = await fetchExerciseTypes()
+        const active = items.filter((item) => item.is_active)
+        setExerciseTypes(active)
+        const map: ExerciseTypeMap = {}
+        active.forEach((item) => {
+          map[item.key] = item
+        })
+        setExerciseTypesMap(map)
+      } catch (error: any) {
+        setExerciseTypesError(error?.message ?? 'Не удалось загрузить типы упражнений')
+      }
+    }
+
+    void loadExercises()
+    void loadTypes()
   }, [])
 
   const filteredExercises = React.useMemo(() => {
@@ -579,10 +601,12 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
       const matchesSearch = !term
         || exercise.title.toLowerCase().includes(term)
         || (exercise.description ?? '').toLowerCase().includes(term)
-      const matchesType = selectedType === 'all' || exercise.type === selectedType
+      const matchesType = selectedType === 'all'
+        || exercise.type === selectedType
+        || (exercise.exercise_type_id && exerciseTypesMap[selectedType]?.id === exercise.exercise_type_id)
       return matchesSearch && matchesType
     })
-  }, [exercises, search, selectedType])
+  }, [exercises, search, selectedType, exerciseTypesMap])
 
   const selectedExerciseIds = React.useMemo(() => {
     const ids = selectedItems
@@ -591,25 +615,32 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
     return new Set(ids)
   }, [selectedItems])
 
-  const exerciseTypes = React.useMemo(() => {
-    const unique = new Set<string>()
+  const exerciseFilters = React.useMemo(() => {
+    const keys = new Set<string>()
     exercises.forEach((exercise) => {
       if (exercise.type) {
-        unique.add(exercise.type)
+        keys.add(exercise.type)
       }
     })
-    return Array.from(unique).sort((a, b) => (TYPE_LABELS[a] ?? a).localeCompare(TYPE_LABELS[b] ?? b, 'ru'))
-  }, [exercises])
+    exerciseTypes.forEach((type) => keys.add(type.key))
+    return Array.from(keys).sort((a, b) => {
+      const nameA = exerciseTypesMap[a]?.name ?? a
+      const nameB = exerciseTypesMap[b]?.name ?? b
+      return nameA.localeCompare(nameB, 'ru')
+    })
+  }, [exercises, exerciseTypes, exerciseTypesMap])
 
-  const getTypeLabel = React.useCallback((type: string) => TYPE_LABELS[type] ?? type, [])
+  const getTypeLabel = React.useCallback(
+    (type: string) => exerciseTypesMap[type]?.name ?? type,
+    [exerciseTypesMap],
+  )
 
   React.useEffect(() => {
     if (selectedType === 'all') return
-    if (exerciseTypes.length === 0) return
-    if (!exerciseTypes.includes(selectedType)) {
+    if (!exerciseFilters.includes(selectedType)) {
       setSelectedType('all')
     }
-  }, [exerciseTypes, selectedType])
+  }, [exerciseFilters, selectedType])
 
   React.useEffect(() => {
     const loadPresets = async () => {
@@ -1387,13 +1418,19 @@ export function WorksheetGenerator({ childContext = null, initialWorksheetId = n
             className="h-10 w-[140px] rounded-md border border-border bg-background px-3 text-sm"
           >
             <option value="all">Все типы</option>
-            {exerciseTypes.map((type) => (
-              <option key={type} value={type}>
-                {getTypeLabel(type)}
+            {exerciseFilters.map((typeKey) => (
+              <option key={typeKey} value={typeKey}>
+                {getTypeLabel(typeKey)}
               </option>
             ))}
           </select>
         </div>
+
+        {exerciseTypesError ? (
+          <Alert variant="destructive">
+            <AlertDescription>{exerciseTypesError}</AlertDescription>
+          </Alert>
+        ) : null}
 
         {(search.trim() || selectedType !== 'all') && (
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">

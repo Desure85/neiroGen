@@ -8,8 +8,10 @@ use App\Http\Requests\Exercises\ExerciseUpdateRequest;
 use App\Http\Resources\V1\ExerciseResource;
 use App\Models\ContentBlock;
 use App\Models\Exercise;
+use App\Models\ExerciseType;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Validation\ValidationException;
 
 class ExerciseController extends Controller
 {
@@ -64,9 +66,13 @@ class ExerciseController extends Controller
 
         $payload = $request->validated();
 
+        $exerciseType = $this->resolveExerciseType($payload);
+
         $exercise = Exercise::create(array_merge($payload, [
             'tenant_id' => $tenantId,
             'created_by' => $userId,
+            'type' => $exerciseType->key,
+            'exercise_type_id' => $exerciseType->id,
             'instructions' => $payload['instructions'] ?? ($payload['content']['instructions'] ?? []),
             'custom_params' => $payload['custom_params'] ?? ($payload['content']['custom_params'] ?? []),
         ]));
@@ -75,7 +81,7 @@ class ExerciseController extends Controller
             $exercise->contentBlocks()->sync($this->formatBlocksPayload($payload['blocks']));
         }
 
-        return (new ExerciseResource($exercise->fresh('contentBlocks')))
+        return (new ExerciseResource($exercise->fresh(['contentBlocks', 'exerciseType'])))
             ->response()
             ->setStatusCode(201);
     }
@@ -99,6 +105,12 @@ class ExerciseController extends Controller
 
         $payload = $request->validated();
 
+        if (array_key_exists('exercise_type_id', $payload) || array_key_exists('type', $payload)) {
+            $exerciseType = $this->resolveExerciseType($payload, $exercise);
+            $payload['exercise_type_id'] = $exerciseType->id;
+            $payload['type'] = $exerciseType->key;
+        }
+
         $exercise->update(array_merge($payload, [
             'instructions' => $payload['instructions'] ?? ($payload['content']['instructions'] ?? $exercise->instructions),
             'custom_params' => $payload['custom_params'] ?? ($payload['content']['custom_params'] ?? $exercise->custom_params),
@@ -108,7 +120,7 @@ class ExerciseController extends Controller
             $exercise->contentBlocks()->sync($this->formatBlocksPayload($payload['blocks'] ?? []));
         }
 
-        return new ExerciseResource($exercise->fresh('contentBlocks'));
+        return new ExerciseResource($exercise->fresh(['contentBlocks', 'exerciseType']));
     }
 
     /**
@@ -128,6 +140,34 @@ class ExerciseController extends Controller
         $tenantId = optional(auth()->user())->tenant_id ?? 1;
 
         abort_if($exercise->tenant_id !== $tenantId, 404, 'Exercise not found');
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function resolveExerciseType(array $payload, ?Exercise $exercise = null): ExerciseType
+    {
+        if (isset($payload['exercise_type_id'])) {
+            $type = ExerciseType::find($payload['exercise_type_id']);
+            if ($type) {
+                return $type;
+            }
+        }
+
+        if (isset($payload['type'])) {
+            $type = ExerciseType::where('key', $payload['type'])->first();
+            if ($type) {
+                return $type;
+            }
+        }
+
+        if ($exercise && $exercise->relationLoaded('exerciseType') ? $exercise->exerciseType : $exercise->exerciseType()->exists()) {
+            return $exercise->exerciseType;
+        }
+
+        throw ValidationException::withMessages([
+            'exercise_type_id' => __('Указанный тип упражнения не найден.'),
+        ]);
     }
 
     /**

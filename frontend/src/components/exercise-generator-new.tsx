@@ -1,18 +1,29 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Brain, Volume2, Clock, Target, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { fetchExerciseTypes, type ExerciseTypeDto } from '@/lib/api'
 import { AdaptiveGenerator } from './adaptive-generator'
 import { ProgressStats } from './progress-stats'
+
+interface ExerciseTypeSummary {
+  id: number
+  key: string
+  name: string
+  icon?: string | null
+  domain?: string | null
+}
 
 interface Exercise {
   id: number
   title: string
   type: string
+  exercise_type_id?: number | null
+  exerciseType?: ExerciseTypeSummary | null
   difficulty: string
   estimated_duration: number
   content: {
@@ -30,24 +41,77 @@ interface ExerciseGeneratorProps {
 export function ExerciseGenerator({ onExerciseSelect, childId }: ExerciseGeneratorProps) {
   const [isGenerating, setIsGenerating] = useState(false)
   const [exercises, setExercises] = useState<Exercise[]>([])
-  const [selectedTypes, setSelectedTypes] = useState<string[]>(['pronunciation', 'articulation'])
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([])
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('medium')
   const [mode, setMode] = useState<'manual' | 'adaptive'>('manual')
 
-  const exerciseTypes = {
-    pronunciation: { name: 'Произношение', icon: '🗣️', color: 'bg-blue-500' },
-    articulation: { name: 'Артикуляция', icon: '👅', color: 'bg-green-500' },
-    rhythm: { name: 'Ритм', icon: '🎵', color: 'bg-purple-500' },
-    memory: { name: 'Память', icon: '🧠', color: 'bg-orange-500' }
-  }
+  const [availableTypes, setAvailableTypes] = useState<ExerciseTypeDto[]>([])
+  const [typesLoading, setTypesLoading] = useState(true)
+  const [typesError, setTypesError] = useState<string | null>(null)
 
   const difficulties = {
     easy: { name: 'Легкий', color: 'bg-green-100 text-green-800' },
     medium: { name: 'Средний', color: 'bg-yellow-100 text-yellow-800' },
-    hard: { name: 'Сложный', color: 'bg-red-100 text-red-800' }
+    hard: { name: 'Сложный', color: 'bg-red-100 text-red-800' },
   }
 
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        setTypesLoading(true)
+        setTypesError(null)
+        const items = await fetchExerciseTypes()
+        if (!mounted) return
+        const activeSorted = items
+          .filter((item) => item.is_active)
+          .sort((a, b) => a.display_order - b.display_order || a.name.localeCompare(b.name, 'ru'))
+        setAvailableTypes(activeSorted)
+      } catch (error) {
+        if (mounted) {
+          setTypesError(error instanceof Error ? error.message : 'Не удалось загрузить типы упражнений')
+        }
+      } finally {
+        if (mounted) {
+          setTypesLoading(false)
+        }
+      }
+    })()
+
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (availableTypes.length === 0 || selectedTypes.length > 0) {
+      return
+    }
+    setSelectedTypes(availableTypes.slice(0, 2).map((item) => item.key))
+  }, [availableTypes, selectedTypes.length])
+
+  const typeByKey = useMemo(() => {
+    const map: Record<string, ExerciseTypeDto> = {}
+    availableTypes.forEach((item) => {
+      map[item.key] = item
+    })
+    return map
+  }, [availableTypes])
+
+  const typeButtons = useMemo(() => {
+    return availableTypes.map((item) => ({
+      key: item.key,
+      name: item.name,
+      icon: item.icon ?? '🧩',
+    }))
+  }, [availableTypes])
+
   const generateExercises = async () => {
+    if (selectedTypes.length === 0) {
+      setTypesError('Выберите хотя бы один тип упражнения')
+      return
+    }
+
     setIsGenerating(true)
 
     try {
@@ -62,9 +126,9 @@ export function ExerciseGenerator({ onExerciseSelect, childId }: ExerciseGenerat
           difficulties: [selectedDifficulty],
           custom_params: {
             interactive: true,
-            audio_guidance: true
-          }
-        })
+            audio_guidance: true,
+          },
+        }),
       })
 
       if (response.ok) {
@@ -80,17 +144,13 @@ export function ExerciseGenerator({ onExerciseSelect, childId }: ExerciseGenerat
     }
   }
 
-  const getTypeIcon = (type: string) => {
-    return exerciseTypes[type as keyof typeof exerciseTypes]?.icon || '📝'
-  }
+  const getTypeIcon = (type: string) => typeByKey[type]?.icon ?? '📝'
 
-  const getDifficultyColor = (difficulty: string) => {
-    return difficulties[difficulty as keyof typeof difficulties]?.color || 'bg-gray-100 text-gray-800'
-  }
+  const getDifficultyColor = (difficulty: string) =>
+    difficulties[difficulty as keyof typeof difficulties]?.color || 'bg-gray-100 text-gray-800'
 
   return (
     <div className="space-y-6">
-      {/* Переключатель режимов */}
       <Card>
         <CardHeader>
           <CardTitle>Режим генерации</CardTitle>
@@ -130,35 +190,43 @@ export function ExerciseGenerator({ onExerciseSelect, childId }: ExerciseGenerat
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Типы упражнений */}
               <div>
                 <h4 className="font-medium mb-2">Типы упражнений</h4>
-                <div className="flex flex-wrap gap-2">
-                  {Object.entries(exerciseTypes).map(([type, info]) => (
-                    <button
-                      key={type}
-                      onClick={() => {
-                        setSelectedTypes(prev =>
-                          prev.includes(type)
-                            ? prev.filter(t => t !== type)
-                            : [...prev, type]
-                        )
-                      }}
-                      className={cn(
-                        "px-3 py-1 rounded-full text-sm border transition-colors",
-                        selectedTypes.includes(type)
-                          ? `${info.color} text-white border-transparent`
-                          : "bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200"
-                      )}
-                    >
-                      <span className="mr-1">{info.icon}</span>
-                      {info.name}
-                    </button>
-                  ))}
-                </div>
+                {typesLoading ? (
+                  <p className="text-sm text-muted-foreground">Загружаю список типов…</p>
+                ) : typesError ? (
+                  <p className="text-sm text-destructive">{typesError}</p>
+                ) : typeButtons.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Нет доступных типов упражнений.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {typeButtons.map((item) => (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => {
+                          setTypesError(null)
+                          setSelectedTypes((prev) =>
+                            prev.includes(item.key)
+                              ? prev.filter((t) => t !== item.key)
+                              : [...prev, item.key]
+                          )
+                        }}
+                        className={cn(
+                          "px-3 py-1 rounded-full text-sm border transition-colors",
+                          selectedTypes.includes(item.key)
+                            ? "bg-primary text-primary-foreground border-transparent"
+                            : "bg-muted text-foreground border-border hover:bg-muted/80"
+                        )}
+                      >
+                        <span className="mr-1">{item.icon}</span>
+                        {item.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* Сложность */}
               <div>
                 <h4 className="font-medium mb-2">Сложность</h4>
                 <div className="flex gap-2">
@@ -179,7 +247,6 @@ export function ExerciseGenerator({ onExerciseSelect, childId }: ExerciseGenerat
                 </div>
               </div>
 
-              {/* Кнопка генерации */}
               <Button
                 onClick={generateExercises}
                 disabled={isGenerating || selectedTypes.length === 0}
@@ -200,7 +267,6 @@ export function ExerciseGenerator({ onExerciseSelect, childId }: ExerciseGenerat
             </CardContent>
           </Card>
 
-          {/* Результаты генерации */}
           {exercises.length > 0 && (
             <Card>
               <CardHeader>
@@ -220,7 +286,7 @@ export function ExerciseGenerator({ onExerciseSelect, childId }: ExerciseGenerat
                             <div>
                               <h3 className="font-medium">{exercise.title}</h3>
                               <p className="text-sm text-gray-600">
-                                {exerciseTypes[exercise.type as keyof typeof exerciseTypes]?.name}
+                                {typeByKey[exercise.type]?.name ?? exercise.content.exercise_type ?? exercise.type}
                               </p>
                             </div>
                           </div>
@@ -236,8 +302,12 @@ export function ExerciseGenerator({ onExerciseSelect, childId }: ExerciseGenerat
                         </div>
 
                         <div className="text-sm text-gray-600 mb-3">
-                          <p><strong>Тип:</strong> {exercise.content.exercise_type}</p>
-                          <p><strong>Элементы:</strong> {exercise.content.items.length} шт.</p>
+                          <p>
+                            <strong>Тип:</strong> {typeByKey[exercise.type]?.name ?? exercise.content.exercise_type ?? exercise.type}
+                          </p>
+                          <p>
+                            <strong>Элементы:</strong> {exercise.content.items.length} шт.
+                          </p>
                         </div>
 
                         <div className="space-y-2 mb-4">
@@ -268,7 +338,6 @@ export function ExerciseGenerator({ onExerciseSelect, childId }: ExerciseGenerat
           )}
         </>
       ) : (
-        /* Адаптивный режим */
         <div className="space-y-6">
           {childId ? <ProgressStats childId={childId} /> : null}
           <AdaptiveGenerator childId={childId} onExerciseSelect={onExerciseSelect} />
