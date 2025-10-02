@@ -41,6 +41,8 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::get('/sessions', [ExerciseSessionController::class, 'index']);
 Route::post('/sessions', [ExerciseSessionController::class, 'store']);
 Route::get('/sessions/{session}', [ExerciseSessionController::class, 'show']);
+Route::get('/sessions/code/{code}', [ExerciseSessionController::class, 'getByCode']);
+Route::post('/sessions/code/{code}/results', [ExerciseSessionController::class, 'updateResults']);
 
 // SVG generation endpoint
 Route::post('/svg/generate', [SvgController::class, 'generate'])->middleware('throttle:svggen');
@@ -73,7 +75,8 @@ Route::prefix('generator')->group(function () {
 });
 
 // Graphic Dictation routes (JSON-based, no queue)
-Route::middleware('auth:sanctum')->prefix('generator/graphic-dictation')->group(function () {
+Route::prefix('generator/graphic-dictation')->group(function () {
+    // Публичные роуты - не требуют аутентификации (только вычисления)
     Route::post('/validate', [\App\Http\Controllers\Api\GraphicDictationController::class, 'validatePayload']);
     Route::post('/generate-commands', [\App\Http\Controllers\Api\GraphicDictationController::class, 'generateCommands']);
     Route::post('/create-template', [\App\Http\Controllers\Api\GraphicDictationController::class, 'createTemplate']);

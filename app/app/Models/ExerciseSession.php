@@ -4,12 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class ExerciseSession extends Model
 {
     use HasFactory;
 
     protected $fillable = [
+        'session_code',
         'child_id',
         'exercise_id',
         'score',
@@ -21,6 +23,26 @@ class ExerciseSession extends Model
         'finished_at',
         'metadata',
     ];
+
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        static::creating(function (ExerciseSession $session) {
+            if (empty($session->session_code)) {
+                $session->session_code = static::generateUniqueSessionCode();
+            }
+        });
+    }
+
+    protected static function generateUniqueSessionCode(): string
+    {
+        do {
+            $code = strtoupper(Str::random(8));
+        } while (static::where('session_code', $code)->exists());
+        
+        return $code;
+    }
 
     protected $casts = [
         'started_at' => 'datetime',

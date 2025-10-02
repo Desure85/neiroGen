@@ -48,4 +48,38 @@ class ExerciseSessionController extends Controller
     {
         return response()->json($session);
     }
+
+    /**
+     * Get session by session code (for patient flow)
+     */
+    public function getByCode(Request $request, string $code): JsonResponse
+    {
+        $session = ExerciseSession::where('session_code', strtoupper($code))
+            ->with(['child', 'exercise'])
+            ->firstOrFail();
+
+        return response()->json($session);
+    }
+
+    /**
+     * Update session results (for patient submitting exercise)
+     */
+    public function updateResults(Request $request, string $code): JsonResponse
+    {
+        $session = ExerciseSession::where('session_code', strtoupper($code))->firstOrFail();
+
+        $validated = $request->validate([
+            'score' => 'nullable|integer|min:0',
+            'completed_items' => 'nullable|integer|min:0',
+            'total_items' => 'nullable|integer|min:0',
+            'time_spent' => 'nullable|integer|min:0',
+            'accuracy' => 'nullable|integer|min:0|max:100',
+            'finished_at' => 'nullable|date',
+            'metadata' => 'nullable|array',
+        ]);
+
+        $session->update($validated);
+
+        return response()->json($session);
+    }
 }

@@ -25,6 +25,7 @@ class Exercise extends Model
         'custom_params',
         'tenant_id',
         'created_by',
+        'exercise_type_id',
     ];
 
     protected $casts = [
@@ -35,11 +36,17 @@ class Exercise extends Model
         'instructions' => 'array',
         'custom_params' => 'array',
         'tenant_id' => 'integer',
+        'exercise_type_id' => 'integer',
     ];
 
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);
+    }
+
+    public function exerciseType(): BelongsTo
+    {
+        return $this->belongsTo(ExerciseType::class);
     }
 
     public function creator(): BelongsTo

@@ -15,6 +15,9 @@ interface WorksheetLayoutEditorProps {
   value?: CanvasLayoutValue
   onChange?: (value: CanvasLayoutValue) => void
   className?: string
+  exerciseType?: string
+  exerciseData?: any
+  instructions?: string[]
 }
 
 const cloneLayoutValue = (layout: CanvasLayoutValue): CanvasLayoutValue => ({
@@ -30,7 +33,14 @@ const createDefaultLayout = (): CanvasLayoutValue => ({
   snapshot: null,
 })
 
-export const WorksheetLayoutEditor: React.FC<WorksheetLayoutEditorProps> = ({ value, onChange, className }) => {
+export const WorksheetLayoutEditor: React.FC<WorksheetLayoutEditorProps> = ({ 
+  value, 
+  onChange, 
+  className,
+  exerciseType,
+  exerciseData,
+  instructions
+}) => {
   const [internal, setInternal] = React.useState<CanvasLayoutValue>(() => (value ? cloneLayoutValue(value) : createDefaultLayout()))
 
   React.useEffect(() => {
@@ -46,7 +56,16 @@ export const WorksheetLayoutEditor: React.FC<WorksheetLayoutEditorProps> = ({ va
     [onChange]
   )
 
-  return <WorksheetLayoutCanvas value={internal} onChange={handleChange} className={className} />
+  return (
+    <WorksheetLayoutCanvas 
+      value={internal} 
+      onChange={handleChange} 
+      className={className}
+      exerciseType={exerciseType}
+      exerciseData={exerciseData}
+      instructions={instructions}
+    />
+  )
 }
 
 WorksheetLayoutEditor.displayName = 'WorksheetLayoutEditor'

@@ -272,7 +272,6 @@ export const CanvasLayoutEditor: React.FC<CanvasLayoutEditorProps> = ({ value, o
             scaleY={scale}
             className="mx-auto bg-white"
             onMouseDown={handleStageMouseDown}
-            onTouchStart={handleStageMouseDown}
           >
             <Layer>
               <Rect width={scene.width} height={scene.height} fill="#ffffff" stroke="#e2e8f0" strokeWidth={2} />

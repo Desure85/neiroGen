@@ -4,6 +4,7 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { LocalizationProvider } from '@/components/localization'
 import { Header } from '@/components/header'
 import { AuthProvider } from '@/lib/auth-context'
+import { Toaster } from '@/components/ui/toaster'
 
 export const metadata: Metadata = {
   title: 'NeuroGen - Speech Therapy Exercises',
@@ -40,6 +41,7 @@ export default function RootLayout({
             >
               <Header />
               {children}
+              <Toaster />
             </ThemeProvider>
           </AuthProvider>
         </LocalizationProvider>

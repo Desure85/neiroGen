@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\GraphicDictation\GraphicDictationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -50,6 +51,13 @@ class GraphicDictationController extends Controller
      */
     public function generateCommands(Request $request): JsonResponse
     {
+        // Логируем входные данные для отладки
+        Log::info('GraphicDictation generateCommands request', [
+            'all' => $request->all(),
+            'content_type' => $request->header('Content-Type'),
+            'method' => $request->method(),
+        ]);
+        
         $request->validate([
             'points' => 'required|array|min:2',
             'points.*.row' => 'required|integer|min:0',

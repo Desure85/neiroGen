@@ -14,7 +14,9 @@ import {
   Clock,
   Target,
   Award,
-  Calendar
+  Calendar,
+  Search,
+  UserPlus
 } from 'lucide-react'
 import { ExerciseGenerator, ExercisePlayer, ContentBlockManager } from '@/components/exercise-components'
 import { ExerciseConstructor } from '@/components/exercise-constructor'
@@ -92,6 +94,13 @@ function TherapistDashboardContent() {
   })
   const [childrenLoading, setChildrenLoading] = useState(false)
   const [childrenError, setChildrenError] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [ageFilter, setAgeFilter] = useState<string>('all')
+  const [genderFilter, setGenderFilter] = useState<string>('all')
+  const [showCreateSession, setShowCreateSession] = useState(false)
+  const [createdSessionCode, setCreatedSessionCode] = useState<string | null>(null)
+  const [sessionChildId, setSessionChildId] = useState<number | null>(null)
+  const [sessionExerciseId, setSessionExerciseId] = useState<number | null>(null)
 
   // Derived: count of sessions with accuracy >= 80% (simple proxy for achievements)
   const achievementsCount = sessionHistory.reduce((sum, s) => {
@@ -190,6 +199,17 @@ function TherapistDashboardContent() {
   ]
   const [children, setChildren] = useState<Child[]>(initialChildren)
 
+  // Фильтрация детей
+  const filteredChildren = children.filter(child => {
+    const matchesSearch = child.name.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesAge = ageFilter === 'all' || 
+      (ageFilter === '0-5' && child.age <= 5) ||
+      (ageFilter === '6-10' && child.age >= 6 && child.age <= 10) ||
+      (ageFilter === '11+' && child.age >= 11)
+    const matchesGender = genderFilter === 'all' || child.gender === genderFilter
+    return matchesSearch && matchesAge && matchesGender
+  })
+
   // Load children from backend
   const loadChildren = async () => {
     setChildrenError(''); setChildrenLoading(true)
@@ -262,6 +282,62 @@ function TherapistDashboardContent() {
         alert('Не удалось создать: ' + (e as any)?.message)
       }
     })()
+  }
+
+  const handleCreateSession = async () => {
+    if (!sessionChildId) {
+      alert('Выберите ребёнка')
+      return
+    }
+
+    try {
+      const payload = {
+        child_id: sessionChildId,
+        exercise_id: sessionExerciseId,
+        score: 0,
+        completed_items: 0,
+        total_items: 10,
+        time_spent: 0,
+        accuracy: 0,
+        started_at: new Date().toISOString(),
+        metadata: {},
+      }
+
+      const res = await apiFetch(`/api/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+
+      if (!res.ok) throw new Error('HTTP ' + res.status)
+      
+      const data = await res.json()
+      setCreatedSessionCode(data.session_code)
+      
+      // Reload sessions
+      if (selectedChild?.id === sessionChildId) {
+        const sessionsRes = await apiFetch(`/api/sessions?child_id=${sessionChildId}&per_page=50`)
+        if (sessionsRes.ok) {
+          const sessionsData = await sessionsRes.json()
+          const items = Array.isArray(sessionsData?.data) ? sessionsData.data : (Array.isArray(sessionsData) ? sessionsData : [])
+          setSessionHistory(items.map((s:any) => ({
+            childId: s.child_id,
+            exerciseId: s.exercise_id,
+            sessionCode: s.session_code,
+            results: {
+              score: s.score,
+              completedItems: s.completed_items,
+              totalItems: s.total_items,
+              timeSpent: s.time_spent,
+              accuracy: s.accuracy,
+            },
+            timestamp: s.finished_at || s.created_at,
+          })))
+        }
+      }
+    } catch (e: any) {
+      alert('Не удалось создать сессию: ' + (e?.message || e))
+    }
   }
 
   const handleExerciseSelect = (exercise: Exercise) => {
@@ -555,7 +631,19 @@ function TherapistDashboardContent() {
               </CardHeader>
               <CardContent>
                 {sessionHistory.length === 0 ? (
-                  <p className="text-gray-500 text-center py-8">{t('no_sessions_yet')}</p>
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <div className="rounded-full bg-muted p-4 mb-4">
+                      <Clock className="h-10 w-10 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-semibold mb-2">Нет данных о сессиях</h3>
+                    <p className="text-sm text-muted-foreground mb-6 max-w-sm text-center">
+                      Выберите ребенка и начните сессию, чтобы увидеть статистику.
+                    </p>
+                    <Button onClick={() => setActiveTab('children')}>
+                      <Users className="mr-2 h-4 w-4" />
+                      Выбрать ребенка
+                    </Button>
+                  </div>
                 ) : (
                   <div className="space-y-4">
                     {sessionHistory.slice(-5).reverse().map((session, index) => {
@@ -674,8 +762,72 @@ function TherapistDashboardContent() {
             </Card>
           </TabsContent>
           <TabsContent value="children" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {children.map((child) => {
+            {/* Поиск и фильтры */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Поиск по имени..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9"
+                      aria-label="Поиск детей"
+                    />
+                  </div>
+                  <select
+                    value={ageFilter}
+                    onChange={(e) => setAgeFilter(e.target.value)}
+                    className="px-3 py-2 border rounded-md bg-background text-foreground"
+                    aria-label="Фильтр по возрасту"
+                  >
+                    <option value="all">Все возрасты</option>
+                    <option value="0-5">0-5 лет</option>
+                    <option value="6-10">6-10 лет</option>
+                    <option value="11+">11+ лет</option>
+                  </select>
+                  <select
+                    value={genderFilter}
+                    onChange={(e) => setGenderFilter(e.target.value)}
+                    className="px-3 py-2 border rounded-md bg-background text-foreground"
+                    aria-label="Фильтр по полу"
+                  >
+                    <option value="all">Все</option>
+                    <option value="male">Мальчики</option>
+                    <option value="female">Девочки</option>
+                  </select>
+                </div>
+              </CardContent>
+            </Card>
+
+            {filteredChildren.length === 0 ? (
+              <Card>
+                <CardContent className="py-12">
+                  <div className="flex flex-col items-center justify-center text-center">
+                    <div className="rounded-full bg-muted p-4 mb-4">
+                      <UserPlus className="h-10 w-10 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-semibold mb-2">
+                      {searchQuery || ageFilter !== 'all' || genderFilter !== 'all' 
+                        ? 'Не найдено детей' 
+                        : 'Пока нет детей'}
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-6 max-w-sm">
+                      {searchQuery || ageFilter !== 'all' || genderFilter !== 'all'
+                        ? 'Попробуйте изменить параметры поиска или добавьте нового ребенка.'
+                        : 'Добавьте первого ребенка, чтобы начать работу с упражнениями.'}
+                    </p>
+                    <Button onClick={() => setShowAddChild(true)}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Добавить ребенка
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredChildren.map((child) => {
                 const stats = getChildStats(child)
                 return (
                   <Card key={child.id} className="cursor-pointer hover:shadow-md transition-shadow">
@@ -733,6 +885,7 @@ function TherapistDashboardContent() {
                 )
               })}
             </div>
+            )}
           </TabsContent>
 
           <TabsContent value="generator" className="space-y-6">
@@ -762,6 +915,106 @@ function TherapistDashboardContent() {
           </TabsContent>
 
           <TabsContent value="sessions" className="space-y-6">
+            {/* Create Session Card */}
+            <Card className="border-2 border-blue-200 bg-blue-50/30">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Plus className="h-5 w-5" />
+                      Создать новую сессию
+                    </CardTitle>
+                    <CardDescription>
+                      Сгенерируйте код для пациента, чтобы он мог выполнить упражнение
+                    </CardDescription>
+                  </div>
+                  {!showCreateSession && (
+                    <Button onClick={() => setShowCreateSession(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Создать
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              {showCreateSession && (
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Выберите ребёнка</label>
+                      <select
+                        className="w-full p-2 border rounded bg-background"
+                        value={sessionChildId || ''}
+                        onChange={(e) => setSessionChildId(Number(e.target.value) || null)}
+                      >
+                        <option value="">-- Выберите --</option>
+                        {children.map((child) => (
+                          <option key={child.id} value={child.id}>
+                            {child.avatar} {child.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Упражнение (опционально)</label>
+                      <select
+                        className="w-full p-2 border rounded bg-background"
+                        value={sessionExerciseId || ''}
+                        onChange={(e) => setSessionExerciseId(Number(e.target.value) || null)}
+                      >
+                        <option value="">-- Любое --</option>
+                        {/* TODO: Load exercises list */}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowCreateSession(false)
+                        setSessionChildId(null)
+                        setSessionExerciseId(null)
+                        setCreatedSessionCode(null)
+                      }}
+                    >
+                      Отмена
+                    </Button>
+                    <Button onClick={handleCreateSession}>
+                      Создать сессию
+                    </Button>
+                  </div>
+
+                  {createdSessionCode && (
+                    <div className="mt-4 p-6 bg-green-50 border-2 border-green-200 rounded-lg">
+                      <h4 className="font-semibold text-green-800 mb-2">✓ Сессия создана!</h4>
+                      <p className="text-sm text-gray-600 mb-3">
+                        Передайте этот код пациенту для выполнения упражнения
+                      </p>
+                      <div className="bg-white p-4 rounded border-2 border-green-300 text-center">
+                        <p className="text-xs text-gray-500 mb-1">КОД СЕССИИ</p>
+                        <p className="text-4xl font-mono font-bold text-green-700 tracking-wider">
+                          {createdSessionCode}
+                        </p>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-3 text-center">
+                        Пациент может войти по адресу: /patient/{createdSessionCode}
+                      </p>
+                      <Button
+                        variant="outline"
+                        className="w-full mt-3"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/patient/${createdSessionCode}`)
+                          alert('Ссылка скопирована!')
+                        }}
+                      >
+                        Копировать ссылку
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              )}
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle>История сессий</CardTitle>

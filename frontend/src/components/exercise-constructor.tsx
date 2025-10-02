@@ -19,6 +19,7 @@ import { Star, StarOff, Settings2, ArrowRight, ArrowUp, ArrowDown, Eye, EyeOff, 
 const CONSTRUCTOR_STEPS = [
   { id: 'type', label: 'Выбор типа', description: 'Определите формат и сценарий упражнения' },
   { id: 'configure', label: 'Настройка', description: 'Заполните параметры и подготовьте контент' },
+  { id: 'layout', label: 'Макет', description: 'Размещение элементов задания' },
 ] as const
 
 type ConstructorStepId = (typeof CONSTRUCTOR_STEPS)[number]['id']
@@ -1017,7 +1018,7 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
                 )}
                 <div className="flex justify-end pt-2">
                   <Button onClick={() => setCurrentStep('configure')} disabled={typesLoading}>
-                    Перейти к настройкам
+                    Далее: Настройка
                   </Button>
                 </div>
 
@@ -1208,6 +1209,7 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
                 {draft.type === 'graphic_dictation' && (
                   <div className="space-y-4 rounded-lg border border-border bg-muted/30 p-4">
                     <GraphicDictationGenerator
+                      initialPayload={graphicDictationResult}
                       onResult={(res) => {
                         setGraphicDictationResult(res)
                         if (res.instructions?.length) {
@@ -1225,18 +1227,6 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
                     )}
                   </div>
                 )}
-
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-sm font-medium">Визуальный макет упражнения</div>
-                      <div className="text-xs text-muted-foreground">
-                        Скомпонуйте элементы, которые появятся в печатном варианте упражнения
-                      </div>
-                    </div>
-                  </div>
-                  <WorksheetLayoutEditor value={draft.layout} onChange={handleLayoutChange} />
-                </div>
 
                 <div>
                   <label className="block text-sm mb-1 text-muted-foreground">Инструкции</label>
@@ -1258,12 +1248,47 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
                   </ul>
                 </div>
 
+                <div className="flex justify-between gap-2">
+                  <Button variant="outline" onClick={() => setCurrentStep('type')}>
+                    Назад к выбору типа
+                  </Button>
+                  <Button onClick={() => setCurrentStep('layout')}>
+                    Далее: Макет задания
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {currentStep === 'layout' && (
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-medium">Визуальный макет упражнения</div>
+                      <div className="text-xs text-muted-foreground">
+                        Скомпонуйте элементы, которые появятся в печатном варианте упражнения
+                      </div>
+                    </div>
+                  </div>
+                  <WorksheetLayoutEditor 
+                    value={draft.layout} 
+                    onChange={handleLayoutChange}
+                    exerciseType={draft.type}
+                    exerciseData={graphicDictationResult || customParams}
+                    instructions={
+                      draft.type === 'graphic_dictation' && graphicDictationResult?.instructions
+                        ? graphicDictationResult.instructions
+                        : draft.instructions
+                    }
+                  />
+                </div>
+
                 <div className="space-y-2">
                   {saveError && <div className="text-sm text-red-600">{saveError}</div>}
                   {saveOk && <div className="text-sm text-green-700">{saveOk}</div>}
                   <div className="flex justify-between gap-2">
-                    <Button variant="outline" onClick={() => setCurrentStep('type')}>
-                      Назад к выбору типа
+                    <Button variant="outline" onClick={() => setCurrentStep('configure')}>
+                      Назад к настройке
                     </Button>
                     <Button onClick={create} disabled={saveLoading}>
                       {saveLoading ? 'Сохранение…' : 'Сохранить упражнение'}
