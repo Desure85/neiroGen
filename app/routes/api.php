@@ -72,10 +72,13 @@ Route::prefix('generator')->group(function () {
     Route::post('/validate', [ExerciseGeneratorController::class, 'validateContent']);
 });
 
-Route::middleware('auth:sanctum')->prefix('generator')->group(function () {
-    Route::post('/graphic-dictation', [\App\Http\Controllers\Api\GraphicDictationController::class, 'store']);
-    Route::get('/graphic-dictation/{job}', [\App\Http\Controllers\Api\GraphicDictationController::class, 'show']);
+// Graphic Dictation routes (JSON-based, no queue)
+Route::middleware('auth:sanctum')->prefix('generator/graphic-dictation')->group(function () {
+    Route::post('/validate', [\App\Http\Controllers\Api\GraphicDictationController::class, 'validatePayload']);
+    Route::post('/generate-commands', [\App\Http\Controllers\Api\GraphicDictationController::class, 'generateCommands']);
+    Route::post('/create-template', [\App\Http\Controllers\Api\GraphicDictationController::class, 'createTemplate']);
 });
+
 
 // Adaptive exercise routes
 Route::prefix('adaptive')->group(function () {

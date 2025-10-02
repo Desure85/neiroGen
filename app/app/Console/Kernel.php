@@ -11,7 +11,7 @@ class Kernel extends ConsoleKernel
      * @var array<int, class-string>
      */
     protected $commands = [
-        \App\Console\Commands\GraphicDictationConsumeResults::class,
+        //
     ];
 
     /**
