@@ -1,76 +1,37 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { apiFetch } from "@/lib/api"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { useMemo } from "react"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-
-interface ExerciseTypeListItem {
-  id: number
-  key: string
-  name: string
-  domain: string | null
-  icon?: string | null
-  description?: string | null
-  is_active: boolean
-  display_order: number
-  fields_count?: number
-  exercises_count?: number
-  updated_at?: string | null
-}
-
-interface ExerciseTypeListResponse {
-  data: ExerciseTypeListItem[]
-  meta?: {
-    total?: number
-  }
-}
+import { useToast } from "@/components/ui/use-toast"
+import { useAdminExerciseTypes } from "@/components/admin/exercise-types/use-admin-exercise-types"
+import type { AdminExerciseTypeListItem } from "@/lib/api"
 
 export default function ExerciseTypesPage() {
-  const [items, setItems] = useState<ExerciseTypeListItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [search, setSearch] = useState("")
-  const [showInactive, setShowInactive] = useState(false)
-
-  useEffect(() => {
-    let mounted = true
-    ;(async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        const res = await apiFetch("/api/admin/exercise-types")
-        if (!res.ok) {
-          throw new Error(`Ошибка загрузки (${res.status})`)
-        }
-        const payload: ExerciseTypeListResponse = await res.json()
-        if (mounted) {
-          setItems(payload.data ?? [])
-        }
-      } catch (err) {
-        if (mounted) {
-          setError(err instanceof Error ? err.message : "Не удалось загрузить типы упражнений")
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false)
-        }
-      }
-    })()
-    return () => {
-      mounted = false
-    }
-  }, [])
+  const { toast } = useToast()
+  const {
+    items,
+    meta,
+    search,
+    setSearch,
+    showInactive,
+    setShowInactive,
+    loading,
+    error,
+    updatingId,
+    toggleActive,
+    reload,
+  } = useAdminExerciseTypes({ toast })
 
   const filteredItems = useMemo(() => {
     const q = search.trim().toLowerCase()
     return (items ?? [])
-      .filter((item) => (showInactive ? true : item.is_active))
-      .filter((item) =>
+      .filter((item: AdminExerciseTypeListItem) => (showInactive ? true : item.is_active))
+      .filter((item: AdminExerciseTypeListItem) =>
         !q
           ? true
           : [item.name, item.key, item.domain ?? "", item.description ?? ""]
@@ -78,8 +39,12 @@ export default function ExerciseTypesPage() {
               .toLowerCase()
               .includes(q),
       )
-      .sort((a, b) => a.display_order - b.display_order || a.name.localeCompare(b.name))
+      .sort((a: AdminExerciseTypeListItem, b: AdminExerciseTypeListItem) =>
+        a.display_order - b.display_order || a.name.localeCompare(b.name),
+      )
   }, [items, search, showInactive])
+
+  const totalCount = meta?.total ?? items.length
 
   return (
     <div className="space-y-6">
@@ -87,7 +52,7 @@ export default function ExerciseTypesPage() {
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Типы упражнений</h2>
           <p className="text-sm text-muted-foreground">
-            Управляйте справочником типов и их схемой полей. Всего: {items.length}
+            Управляйте справочником типов и их схемой полей. Всего: {totalCount}
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -122,6 +87,9 @@ export default function ExerciseTypesPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
+              <Button type="button" variant="outline" onClick={() => reload({ silent: true })}>
+                Обновить
+              </Button>
             </div>
           </div>
         </CardHeader>
@@ -172,20 +140,28 @@ export default function ExerciseTypesPage() {
                       <td className="px-3 py-3">
                         <Badge variant="secondary">{item.domain || "—"}</Badge>
                       </td>
-                      <td className="px-3 py-3 text-muted-foreground">
-                        {item.fields_count ?? 0}
-                      </td>
-                      <td className="px-3 py-3 text-muted-foreground">
-                        {item.exercises_count ?? 0}
-                      </td>
+                      <td className="px-3 py-3 text-muted-foreground">{item.fields_count ?? 0}</td>
+                      <td className="px-3 py-3 text-muted-foreground">{item.exercises_count ?? 0}</td>
                       <td className="px-3 py-3 text-xs text-muted-foreground">
                         {item.updated_at ? new Date(item.updated_at).toLocaleString() : "—"}
                       </td>
                       <td className="px-3 py-3 text-right">
                         <div className="inline-flex items-center gap-2">
-                          <Badge variant={item.is_active ? "success" : "outline"}>
+                          <Badge
+                            variant={item.is_active ? "secondary" : "outline"}
+                            className={item.is_active ? "bg-emerald-100 text-emerald-900" : undefined}
+                          >
                             {item.is_active ? "активен" : "скрыт"}
                           </Badge>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleActive(item)}
+                            disabled={updatingId === item.id}
+                          >
+                            {updatingId === item.id ? "Обновляю..." : item.is_active ? "Скрыть" : "Показать"}
+                          </Button>
                           <Button asChild variant="outline" size="sm">
                             <Link href={`/admin/exercise-types/${item.id}`}>Открыть</Link>
                           </Button>

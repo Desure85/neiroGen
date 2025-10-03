@@ -176,7 +176,9 @@ Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
         Route::delete('exercise-types/{exerciseType}', [AdminExerciseTypeController::class, 'destroy']);
 
         Route::post('exercise-types/{exerciseType}/fields', [AdminExerciseTypeFieldController::class, 'store']);
+        Route::patch('exercise-types/{exerciseType}/fields/{exerciseTypeField}', [AdminExerciseTypeFieldController::class, 'update']);
         Route::delete('exercise-types/{exerciseType}/fields/{exerciseTypeField}', [AdminExerciseTypeFieldController::class, 'destroy']);
+        Route::post('exercise-types/{exerciseType}/fields/reorder', [AdminExerciseTypeFieldController::class, 'reorder']);
     });
 
     Route::post('comfy-presets', [ComfyPresetController::class, 'store']);

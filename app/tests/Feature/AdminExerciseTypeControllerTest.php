@@ -225,4 +225,69 @@ class AdminExerciseTypeControllerTest extends TestCase
         $this->deleteJson("/api/admin/exercise-types/{$type->id}/fields/{$foreignField->id}")
             ->assertNotFound();
     }
+
+    public function test_admin_can_update_field_of_exercise_type(): void
+    {
+        $field = ExerciseTypeField::factory()->create([
+            'label' => 'Продолжительность',
+            'key' => 'duration',
+            'field_type' => 'integer',
+            'is_required' => true,
+            'default_value' => 5,
+        ]);
+
+        $this->actingAsAdmin();
+
+        $payload = [
+            'label' => 'Длительность занятия',
+            'is_required' => false,
+            'default_value' => json_encode(10),
+            'help_text' => 'Количество минут',
+        ];
+
+        $response = $this->patchJson(
+            "/api/admin/exercise-types/{$field->exercise_type_id}/fields/{$field->id}",
+            $payload,
+        )->assertOk();
+
+        $response->assertJsonPath('data.label', 'Длительность занятия');
+        $response->assertJsonPath('data.is_required', false);
+        $response->assertJsonPath('data.help_text', 'Количество минут');
+        $response->assertJsonPath('data.default_value', 10);
+
+        $this->assertDatabaseHas('exercise_type_fields', [
+            'id' => $field->id,
+            'label' => 'Длительность занятия',
+            'is_required' => false,
+            'help_text' => 'Количество минут',
+        ]);
+    }
+
+    public function test_admin_can_reorder_fields_of_exercise_type(): void
+    {
+        $type = ExerciseType::factory()->create();
+        $fields = ExerciseTypeField::factory()->count(3)->sequence(
+            ['label' => 'Первое', 'display_order' => 0],
+            ['label' => 'Второе', 'display_order' => 1],
+            ['label' => 'Третье', 'display_order' => 2],
+        )->create([
+            'exercise_type_id' => $type->id,
+        ]);
+
+        $this->actingAsAdmin();
+
+        $newOrder = [$fields[2]->id, $fields[0]->id, $fields[1]->id];
+
+        $this->postJson(
+            "/api/admin/exercise-types/{$type->id}/fields/reorder",
+            ['order' => $newOrder],
+        )->assertNoContent();
+
+        $orderedIds = ExerciseTypeField::where('exercise_type_id', $type->id)
+            ->orderBy('display_order')
+            ->pluck('id')
+            ->toArray();
+
+        $this->assertSame($newOrder, $orderedIds);
+    }
 }

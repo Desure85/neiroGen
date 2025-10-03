@@ -1,9 +1,24 @@
 "use client"
 
-import { FormEvent, useEffect, useMemo, useState } from "react"
-import { notFound, useParams, useRouter } from "next/navigation"
+import { ChangeEvent, Dispatch, FormEvent, SetStateAction, useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { apiFetch } from "@/lib/api"
+import { notFound, useParams, useRouter } from "next/navigation"
+import { useToast } from "@/components/ui/use-toast"
+import { ChevronDown, ChevronUp, Loader2, Pencil, Save, Trash2, X } from "lucide-react"
+import {
+  AdminExerciseTypeDetailDto,
+  createExerciseTypeField,
+  deleteExerciseType,
+  deleteExerciseTypeField,
+  fetchAdminExerciseTypeDetail,
+  reorderExerciseTypeFields,
+  updateExerciseType,
+  updateExerciseTypeField,
+  type CreateExerciseTypeFieldPayload,
+  type ExerciseTypeFieldDto,
+  type UpdateExerciseTypeFieldPayload,
+  type UpdateExerciseTypePayload,
+} from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -11,37 +26,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-
-interface ExerciseTypeField {
-  id: number
-  key: string
-  label: string
-  field_type: string
-  is_required: boolean
-  default_value?: any
-  min_value?: number | null
-  max_value?: number | null
-  step?: number | null
-  options?: any
-  display_order: number
-  help_text?: string | null
-}
-
-interface ExerciseTypeDetail {
-  id: number
-  key: string
-  name: string
-  domain: string | null
-  icon?: string | null
-  description?: string | null
-  is_active: boolean
-  display_order: number
-  meta?: Record<string, any> | null
-  fields: ExerciseTypeField[]
-  exercises_count?: number
-  updated_at?: string | null
-  created_at?: string | null
-}
+import {
+  ExerciseTypeForm,
+  type ExerciseTypeFormChangeHandler,
+  type ExerciseTypeFormState,
+} from "@/components/admin/exercise-types/exercise-type-form"
 
 interface NewFieldForm {
   label: string
@@ -56,15 +45,181 @@ interface NewFieldForm {
   help_text: string
 }
 
+type FieldEditForm = NewFieldForm
+
+const FIELD_TYPE_OPTIONS = ["string", "text", "integer", "number", "boolean", "enum", "array_enum", "json"] as const
+
+function stringifyFieldValue(value: unknown): string {
+  if (value === null || value === undefined) {
+    return ""
+  }
+
+  if (typeof value === "string") {
+    return value
+  }
+
+  try {
+    return JSON.stringify(value)
+  } catch {
+    return ""
+  }
+}
+
+function parseNumberField(value: string, label: string, setError: Dispatch<SetStateAction<string | null>>): number | null {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+
+  const parsed = Number(trimmed)
+  if (Number.isNaN(parsed)) {
+    setError(`${label} должно быть числом`)
+    throw new Error("invalid-number")
+  }
+
+  return parsed
+}
+
+function normalizeKey(value: string): string {
+  return value.trim().replace(/\s+/g, "_").toLowerCase()
+}
+
+function formatFieldDefault(value: unknown): string {
+  if (value === null || value === undefined) {
+    return "—"
+  }
+
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value)
+  }
+
+  try {
+    return JSON.stringify(value)
+  } catch {
+    return "—"
+  }
+}
+
+function formatFieldOptions(value: unknown): JSX.Element | string {
+  if (value === null || value === undefined) {
+    return "—"
+  }
+
+  if (typeof value === "string") {
+    return value
+  }
+
+  try {
+    return (
+      <pre className="max-h-16 overflow-auto rounded-md bg-muted p-2 text-xs">
+        {JSON.stringify(value, null, 2)}
+      </pre>
+    )
+  } catch {
+    return "—"
+  }
+}
+
+function buildCreateFieldPayload(
+  form: FieldEditForm,
+  setError: Dispatch<SetStateAction<string | null>>,
+): CreateExerciseTypeFieldPayload | null {
+  setError(null)
+
+  const label = form.label.trim()
+  const key = normalizeKey(form.key)
+
+  if (!label || !key) {
+    setError("Название и ключ поля обязательны")
+    return null
+  }
+
+  const defaultRaw = form.default_value.trim()
+  let defaultValue: unknown = null
+  if (defaultRaw) {
+    try {
+      defaultValue = JSON.parse(defaultRaw)
+    } catch {
+      defaultValue = defaultRaw
+    }
+  }
+
+  const optionsRaw = form.options.trim()
+  let options: unknown = undefined
+
+  if (optionsRaw) {
+    try {
+      options = JSON.parse(optionsRaw)
+    } catch {
+      setError("Опции поля должны быть валидным JSON")
+      return null
+    }
+  }
+
+  const minValue = parseNumberField(form.min_value, "Минимум", setError)
+  const maxValue = parseNumberField(form.max_value, "Максимум", setError)
+  const stepValue = parseNumberField(form.step, "Шаг", setError)
+
+  const payload: CreateExerciseTypeFieldPayload = {
+    label,
+    key,
+    field_type: form.field_type,
+    is_required: form.is_required,
+    default_value: defaultValue,
+    min_value: minValue,
+    max_value: maxValue,
+    step: stepValue,
+    options,
+    help_text: form.help_text.trim() ? form.help_text.trim() : null,
+  }
+
+  return payload
+}
+
+function buildUpdateFieldPayload(
+  form: FieldEditForm,
+  setError: Dispatch<SetStateAction<string | null>>,
+): UpdateExerciseTypeFieldPayload | null {
+  try {
+    const payload = buildCreateFieldPayload(form, setError)
+    if (!payload) {
+      return null
+    }
+
+    return payload
+  } catch (err) {
+    if (err instanceof Error && err.message === "invalid-number") {
+      return null
+    }
+    throw err
+  }
+}
+
+function fillFormFromField(field: ExerciseTypeFieldDto): FieldEditForm {
+  return {
+    label: field.label ?? "",
+    key: field.key ?? "",
+    field_type: field.field_type ?? "string",
+    is_required: Boolean(field.is_required),
+    default_value: stringifyFieldValue(field.default_value),
+    min_value: field.min_value === null || field.min_value === undefined ? "" : String(field.min_value),
+    max_value: field.max_value === null || field.max_value === undefined ? "" : String(field.max_value),
+    step: field.step === null || field.step === undefined ? "" : String(field.step),
+    options: stringifyFieldValue(field.options),
+    help_text: field.help_text ?? "",
+  }
+}
+
 export default function ExerciseTypeDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
-  const [data, setData] = useState<ExerciseTypeDetail | null>(null)
+  const { toast } = useToast()
+  const [data, setData] = useState<AdminExerciseTypeDetailDto | null>(null)
+  const [formState, setFormState] = useState<ExerciseTypeFormState | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [fieldSaving, setFieldSaving] = useState(false)
   const [fieldError, setFieldError] = useState<string | null>(null)
+  const [fieldEditError, setFieldEditError] = useState<string | null>(null)
   const [newFieldForm, setNewFieldForm] = useState<NewFieldForm>({
     label: "",
     key: "",
@@ -77,47 +232,66 @@ export default function ExerciseTypeDetailPage() {
     options: "",
     help_text: "",
   })
+  const [editingFieldId, setEditingFieldId] = useState<number | null>(null)
+  const [editingFieldForm, setEditingFieldForm] = useState<FieldEditForm | null>(null)
+  const [savingFieldId, setSavingFieldId] = useState<number | null>(null)
+  const [reordering, setReordering] = useState(false)
 
-  useEffect(() => {
-    let mounted = true
-    ;(async () => {
+  const detailToFormState = useCallback(
+    (detail: AdminExerciseTypeDetailDto): ExerciseTypeFormState => ({
+      name: detail.name,
+      key: detail.key,
+      domain: detail.domain ?? "",
+      icon: detail.icon ?? "",
+      description: detail.description ?? "",
+      display_order: detail.display_order ?? 0,
+      is_active: detail.is_active,
+    }),
+    [],
+  )
+
+  const loadDetail = useCallback(
+    async ({ signal }: { signal?: AbortSignal } = {}) => {
       try {
         setLoading(true)
-        const res = await apiFetch(`/api/admin/exercise-types/${id}`)
-        if (res.status === 404) {
+        const detail = await fetchAdminExerciseTypeDetail(id, { signal })
+        setData(detail)
+        setFormState(detailToFormState(detail))
+        setError(null)
+      } catch (err) {
+        if (err instanceof Error && err.message === "not_found") {
           notFound()
           return
         }
 
-  const handleToggleActive = async () => {
-    if (!data) return
-    try {
-      setSaving(true)
-      const res = await apiFetch(`/api/admin/exercise-types/${data.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: data.name,
-          key: data.key,
-          domain: data.domain,
-          icon: data.icon,
-          description: data.description,
-          display_order: data.display_order,
-          is_active: !data.is_active,
-        }),
-      })
-      if (!res.ok) {
-        const payload = await res.json().catch(() => null)
-        throw new Error(payload?.message || "Не удалось изменить статус")
+        if (err instanceof DOMException && err.name === "AbortError") {
+          return
+        }
+
+        const message = err instanceof Error ? err.message : "Не удалось загрузить тип"
+        setError(message)
+        toast({
+          title: "Ошибка",
+          description: message,
+          variant: "destructive",
+        })
+      } finally {
+        if (!signal?.aborted) {
+          setLoading(false)
+        }
       }
-      const payload = await res.json()
-      setData(payload.data ?? payload)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось изменить статус")
-    } finally {
-      setSaving(false)
+    },
+    [detailToFormState, id, toast],
+  )
+
+  useEffect(() => {
+    const controller = new AbortController()
+    loadDetail({ signal: controller.signal })
+
+    return () => {
+      controller.abort()
     }
-  }
+  }, [loadDetail])
 
   const resetFieldForm = () => {
     setNewFieldForm({
@@ -142,56 +316,36 @@ export default function ExerciseTypeDetailPage() {
       return
     }
 
-    let parsedDefault: any = newFieldForm.default_value.trim()
-    if (parsedDefault) {
-      try {
-        parsedDefault = JSON.parse(parsedDefault)
-      } catch {
-        // оставляем как строку
-      }
-    } else {
-      parsedDefault = null
-    }
-
-    let parsedOptions: any = undefined
-    if (newFieldForm.options.trim()) {
-      try {
-        parsedOptions = JSON.parse(newFieldForm.options)
-      } catch (err) {
-        setFieldError("Опции поля должны быть корректным JSON")
-        return
-      }
+    const payload = buildCreateFieldPayload(newFieldForm, setFieldError)
+    if (!payload) {
+      return
     }
 
     try {
       setFieldSaving(true)
       setFieldError(null)
-      const res = await apiFetch(`/api/admin/exercise-types/${data.id}/fields`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          label: newFieldForm.label.trim(),
-          key: newFieldForm.key.trim(),
-          field_type: newFieldForm.field_type,
-          is_required: newFieldForm.is_required,
-          default_value: parsedDefault,
-          min_value: newFieldForm.min_value ? Number(newFieldForm.min_value) : null,
-          max_value: newFieldForm.max_value ? Number(newFieldForm.max_value) : null,
-          step: newFieldForm.step ? Number(newFieldForm.step) : null,
-          options: parsedOptions,
-          help_text: newFieldForm.help_text.trim() || null,
-        }),
-      })
-      if (!res.ok) {
-        const payload = await res.json().catch(() => null)
-        throw new Error(payload?.message || `Ошибка создания поля (${res.status})`)
-      }
-      const payload = await res.json()
-      const createdField = payload.data ?? payload
-      setData((prev) => (prev ? { ...prev, fields: [...(prev.fields ?? []), createdField] } : prev))
+      const createdField = await createExerciseTypeField(data.id, payload)
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              fields: [...(prev.fields ?? []), createdField].sort((a, b) => a.display_order - b.display_order),
+            }
+          : prev,
+      )
       resetFieldForm()
+      toast({
+        title: "Поле добавлено",
+        description: `Поле «${createdField.label}» добавлено к типу.`,
+      })
     } catch (err) {
-      setFieldError(err instanceof Error ? err.message : "Не удалось создать поле")
+      const message = err instanceof Error ? err.message : "Не удалось создать поле"
+      setFieldError(message)
+      toast({
+        title: "Ошибка",
+        description: message,
+        variant: "destructive",
+      })
     } finally {
       setFieldSaving(false)
     }
@@ -200,79 +354,205 @@ export default function ExerciseTypeDetailPage() {
   const handleDeleteField = async (fieldId: number) => {
     if (!data) return
     if (!confirm("Удалить поле?")) return
+
     try {
-      const res = await apiFetch(`/api/admin/exercise-types/${data.id}/fields/${fieldId}`, {
-        method: "DELETE",
+      await deleteExerciseTypeField(data.id, fieldId)
+      setData((prev) =>
+        prev
+          ? { ...prev, fields: prev.fields.filter((field) => field.id !== fieldId) }
+          : prev,
+      )
+      toast({
+        title: "Поле удалено",
+        description: "Поле удалено из типа упражнений.",
       })
-      if (!res.ok) {
-        const payload = await res.json().catch(() => null)
-        throw new Error(payload?.message || `Ошибка удаления поля (${res.status})`)
-      }
-      setData((prev) => (prev ? { ...prev, fields: prev.fields.filter((f) => f.id !== fieldId) } : prev))
     } catch (err) {
-      setFieldError(err instanceof Error ? err.message : "Не удалось удалить поле")
+      const message = err instanceof Error ? err.message : "Не удалось удалить поле"
+      setFieldError(message)
+      toast({
+        title: "Ошибка",
+        description: message,
+        variant: "destructive",
+      })
     }
   }
-        if (!res.ok) {
-          throw new Error(`Ошибка загрузки (${res.status})`)
-        }
-        const payload = await res.json()
-        if (mounted) {
-          setData(payload.data ?? payload)
-        }
-      } catch (err) {
-        if (mounted) {
-          setError(err instanceof Error ? err.message : "Не удалось загрузить тип")
-        }
-      } finally {
-        if (mounted) setLoading(false)
-      }
-    })()
-    return () => {
-      mounted = false
+
+  const openFieldEditor = (fieldId: number) => {
+    if (!data) return
+    const field = data.fields.find((item) => item.id === fieldId)
+    if (!field) return
+    setEditingFieldId(field.id)
+    setFieldEditError(null)
+    setEditingFieldForm(fillFormFromField(field))
+  }
+
+  const cancelFieldEdit = () => {
+    setEditingFieldId(null)
+    setEditingFieldForm(null)
+    setFieldEditError(null)
+  }
+
+  const handleFieldEditChange = <K extends keyof FieldEditForm>(field: K, value: FieldEditForm[K]) => {
+    setEditingFieldForm((prev) => (prev ? { ...prev, [field]: value } : prev))
+  }
+
+  const handleSaveField = async (fieldId: number) => {
+    if (!data || !editingFieldForm) return
+    const payload = buildUpdateFieldPayload(editingFieldForm, setFieldEditError)
+    if (!payload) {
+      return
     }
-  }, [id])
+
+    try {
+      setSavingFieldId(fieldId)
+      setFieldEditError(null)
+      const updated = await updateExerciseTypeField(data.id, fieldId, payload as UpdateExerciseTypeFieldPayload)
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              fields: prev.fields
+                .map((field) => (field.id === fieldId ? updated : field))
+                .sort((a, b) => a.display_order - b.display_order),
+            }
+          : prev,
+      )
+      toast({
+        title: "Поле обновлено",
+        description: `Поле «${updated.label}» обновлено.`,
+      })
+      cancelFieldEdit()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Не удалось сохранить поле"
+      setFieldEditError(message)
+      toast({
+        title: "Ошибка",
+        description: message,
+        variant: "destructive",
+      })
+    } finally {
+      setSavingFieldId(null)
+    }
+  }
+
+  const handleToggleRequired = (event: ChangeEvent<HTMLInputElement>) => {
+    const { checked } = event.target
+    setEditingFieldForm((prev) => (prev ? { ...prev, is_required: checked } : prev))
+  }
+
+  const handleReorder = async (fieldId: number, direction: "up" | "down") => {
+    if (!data) return
+    const fields = [...data.fields].sort((a, b) => a.display_order - b.display_order)
+    const index = fields.findIndex((field) => field.id === fieldId)
+    if (index === -1) return
+    const targetIndex = direction === "up" ? index - 1 : index + 1
+    if (targetIndex < 0 || targetIndex >= fields.length) {
+      return
+    }
+
+    const reordered = [...fields]
+    const [moved] = reordered.splice(index, 1)
+    reordered.splice(targetIndex, 0, moved)
+
+    const order = reordered.map((field) => field.id)
+
+    try {
+      setReordering(true)
+      await reorderExerciseTypeFields(data.id, order)
+      setData((prev) => (prev ? { ...prev, fields: reordered } : prev))
+      toast({
+        title: "Порядок обновлён",
+        description: "Последовательность полей сохранена.",
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Не удалось изменить порядок"
+      setFieldError(message)
+      toast({
+        title: "Ошибка",
+        description: message,
+        variant: "destructive",
+      })
+    } finally {
+      setReordering(false)
+    }
+  }
+
+  const handleToggleActive = async () => {
+    if (!data || !formState) return
+
+    try {
+      setSaving(true)
+      const updated = await updateExerciseType(data.id, {
+        name: formState.name,
+        key: formState.key,
+        domain: formState.domain,
+        icon: formState.icon,
+        description: formState.description,
+        display_order: formState.display_order,
+        is_active: !formState.is_active,
+      })
+      setData(updated)
+      setFormState(detailToFormState(updated))
+      toast({
+        title: updated.is_active ? "Тип активирован" : "Тип скрыт",
+        description: `Тип «${updated.name}» теперь ${updated.is_active ? "доступен" : "скрыт"}.`,
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Не удалось изменить статус"
+      setError(message)
+      toast({
+        title: "Ошибка",
+        description: message,
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const fieldsSorted = useMemo(() => {
     if (!data?.fields) return []
     return [...data.fields].sort((a, b) => a.display_order - b.display_order)
   }, [data])
 
-  const updateForm = (field: keyof ExerciseTypeDetail, value: any) => {
-    setData((prev) => (prev ? { ...prev, [field]: value } : prev))
+  const handleFormChange: ExerciseTypeFormChangeHandler = (field, value) => {
+    setFormState((prev) => (prev ? { ...prev, [field]: value } : prev))
   }
 
   const handleSave = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!data) return
-    if (!data.name.trim() || !data.key.trim()) {
+    if (!data || !formState) return
+    if (!formState.name.trim() || !formState.key.trim()) {
       setError("Название и ключ обязательны")
       return
     }
     try {
       setSaving(true)
       setError(null)
-      const res = await apiFetch(`/api/admin/exercise-types/${data.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: data.name.trim(),
-          key: data.key.trim(),
-          domain: data.domain?.trim() || null,
-          icon: data.icon?.trim() || null,
-          description: data.description?.trim() || null,
-          display_order: Number(data.display_order) || 0,
-          is_active: data.is_active,
-        }),
-      })
-      if (!res.ok) {
-        const payload = await res.json().catch(() => null)
-        throw new Error(payload?.message || `Ошибка сохранения (${res.status})`)
+      const payload: UpdateExerciseTypePayload = {
+        name: formState.name.trim(),
+        key: formState.key.trim(),
+        domain: formState.domain?.trim() || null,
+        icon: formState.icon?.trim() || null,
+        description: formState.description?.trim() || null,
+        display_order: Number(formState.display_order) || 0,
+        is_active: formState.is_active,
       }
-      const payload = await res.json()
-      setData(payload.data ?? payload)
+      const updated = await updateExerciseType(data.id, payload)
+      setData(updated)
+      setFormState(detailToFormState(updated))
+      toast({
+        title: "Изменения сохранены",
+        description: "Настройки типа обновлены.",
+      })
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось сохранить изменения")
+      const message = err instanceof Error ? err.message : "Не удалось сохранить изменения"
+      setError(message)
+      toast({
+        title: "Ошибка",
+        description: message,
+        variant: "destructive",
+      })
     } finally {
       setSaving(false)
     }
@@ -283,18 +563,20 @@ export default function ExerciseTypeDetailPage() {
     if (!confirm("Удалить тип? Все упражнения должны быть перепривязаны.")) return
     try {
       setSaving(true)
-      const res = await apiFetch(`/api/admin/exercise-types/${data.id}`, { method: "DELETE" })
-      if (res.status === 409) {
-        const payload = await res.json().catch(() => null)
-        throw new Error(payload?.message || "Нельзя удалить тип с привязанными упражнениями")
-      }
-      if (!res.ok) {
-        const payload = await res.json().catch(() => null)
-        throw new Error(payload?.message || `Ошибка удаления (${res.status})`)
-      }
+      await deleteExerciseType(data.id)
+      toast({
+        title: "Тип удалён",
+        description: "Тип упражнений успешно удалён.",
+      })
       router.push("/admin/exercise-types")
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось удалить тип")
+      const message = err instanceof Error ? err.message : "Не удалось удалить тип"
+      setError(message)
+      toast({
+        title: "Ошибка",
+        description: message,
+        variant: "destructive",
+      })
     } finally {
       setSaving(false)
     }
@@ -333,7 +615,10 @@ export default function ExerciseTypeDetailPage() {
           <h2 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
             <span className="text-3xl">{data.icon || "📄"}</span>
             {data.name}
-            <Badge variant={data.is_active ? "success" : "outline"}>
+            <Badge
+              variant={data.is_active ? "secondary" : "outline"}
+              className={data.is_active ? "bg-emerald-100 text-emerald-900" : undefined}
+            >
               {data.is_active ? "активен" : "скрыт"}
             </Badge>
           </h2>
@@ -360,86 +645,17 @@ export default function ExerciseTypeDetailPage() {
         </TabsList>
 
         <TabsContent value="details">
-          <Card>
-            <CardHeader>
-              <CardTitle>Основные данные</CardTitle>
-              <CardDescription>Задайте описание и порядок вывода типа в конструкторе упражнений.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form className="grid gap-6" onSubmit={handleSave}>
-                <div className="grid gap-2">
-                  <label className="text-sm font-medium" htmlFor="name">Название</label>
-                  <Input
-                    id="name"
-                    required
-                    value={data.name}
-                    onChange={(e) => updateForm("name", e.target.value)}
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <label className="text-sm font-medium" htmlFor="key">Ключ</label>
-                  <Input
-                    id="key"
-                    required
-                    value={data.key}
-                    onChange={(e) => updateForm("key", e.target.value.replace(/\s+/g, "_"))}
-                  />
-                  <p className="text-xs text-muted-foreground">Изменение ключа может потребовать обновления существующих упражнений.</p>
-                </div>
-
-                <div className="grid gap-2 sm:grid-cols-3">
-                  <div className="grid gap-2">
-                    <label className="text-sm font-medium" htmlFor="domain">Домен</label>
-                    <Input
-                      id="domain"
-                      value={data.domain ?? ""}
-                      onChange={(e) => updateForm("domain", e.target.value)}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <label className="text-sm font-medium" htmlFor="icon">Иконка</label>
-                    <Input
-                      id="icon"
-                      value={data.icon ?? ""}
-                      onChange={(e) => updateForm("icon", e.target.value)}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <label className="text-sm font-medium" htmlFor="display_order">Порядок</label>
-                    <Input
-                      id="display_order"
-                      type="number"
-                      value={data.display_order}
-                      onChange={(e) => updateForm("display_order", Number(e.target.value) || 0)}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid gap-2">
-                  <label className="text-sm font-medium" htmlFor="description">Описание</label>
-                  <Textarea
-                    id="description"
-                    value={data.description ?? ""}
-                    onChange={(e) => updateForm("description", e.target.value)}
-                    rows={4}
-                  />
-                </div>
-
-                {error && (
-                  <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                    {error}
-                  </div>
-                )}
-
-                <div className="flex items-center justify-end gap-2">
-                  <Button type="submit" disabled={saving}>
-                    {saving ? "Сохраняю..." : "Сохранить изменения"}
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
+          <ExerciseTypeForm
+            title="Основные данные"
+            description="Задайте описание и порядок вывода типа в конструкторах упражнений."
+            value={formState ?? detailToFormState(data)}
+            error={error}
+            disabled={saving}
+            submitLabel="Сохранить изменения"
+            onSubmit={handleSave}
+            onChange={handleFormChange}
+            footerSlot={null}
+          />
         </TabsContent>
 
         <TabsContent value="fields">
@@ -586,34 +802,221 @@ export default function ExerciseTypeDetailPage() {
                         <th className="px-3 py-2">Тип</th>
                         <th className="px-3 py-2">Обязательное</th>
                         <th className="px-3 py-2">Default</th>
+                        <th className="px-3 py-2">Опции</th>
                         <th className="px-3 py-2 text-right">Действия</th>
                       </tr>
                     </thead>
                     <tbody className="text-sm">
-                      {fieldsSorted.map((field, index) => (
-                        <tr key={field.id} className="border-b border-border/60 last:border-b-0">
-                          <td className="px-3 py-3 text-muted-foreground">{index + 1}</td>
-                          <td className="px-3 py-3 font-mono text-xs text-muted-foreground">{field.key}</td>
-                          <td className="px-3 py-3 text-foreground">{field.label}</td>
-                          <td className="px-3 py-3 text-muted-foreground">{field.field_type}</td>
-                          <td className="px-3 py-3 text-muted-foreground">{field.is_required ? "Да" : "Нет"}</td>
-                          <td className="px-3 py-3 text-muted-foreground">
-                            {field.default_value === null || field.default_value === undefined
-                              ? "—"
-                              : JSON.stringify(field.default_value)}
-                          </td>
-                          <td className="px-3 py-3 text-right">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteField(field.id)}
-                            >
-                              Удалить
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
+                      {fieldsSorted.map((field, index) => {
+                        const isEditing = editingFieldId === field.id
+                        const form = isEditing ? editingFieldForm : null
+
+                        return (
+                          <tr key={field.id} className="border-b border-border/60 last:border-b-0 align-top">
+                            <td className="px-3 py-3 text-muted-foreground">{index + 1}</td>
+                            <td className="px-3 py-3 font-mono text-xs text-muted-foreground">
+                              {isEditing && form ? (
+                                <Input
+                                  value={form.key}
+                                  onChange={(event) => handleFieldEditChange("key", event.target.value)}
+                                  className="h-8"
+                                />
+                              ) : (
+                                field.key
+                              )}
+                            </td>
+                            <td className="px-3 py-3">
+                              {isEditing && form ? (
+                                <div className="space-y-2">
+                                  <Input
+                                    value={form.label}
+                                    onChange={(event) => handleFieldEditChange("label", event.target.value)}
+                                    className="h-8"
+                                  />
+                                  <Textarea
+                                    value={form.help_text}
+                                    onChange={(event) => handleFieldEditChange("help_text", event.target.value)}
+                                    rows={2}
+                                    placeholder="Help text"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="space-y-1">
+                                  <div className="text-foreground">{field.label}</div>
+                                  {field.help_text ? (
+                                    <div className="text-xs text-muted-foreground">{field.help_text}</div>
+                                  ) : null}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-3 py-3 text-muted-foreground">
+                              {isEditing && form ? (
+                                <select
+                                  className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+                                  value={form.field_type}
+                                  onChange={(event) => handleFieldEditChange("field_type", event.target.value)}
+                                >
+                                  {FIELD_TYPE_OPTIONS.map((option) => (
+                                    <option key={option} value={option}>
+                                      {option}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : (
+                                field.field_type
+                              )}
+                            </td>
+                            <td className="px-3 py-3 text-muted-foreground">
+                              {isEditing && form ? (
+                                <label className="flex items-center gap-2 text-xs">
+                                  <input type="checkbox" checked={form.is_required} onChange={handleToggleRequired} />
+                                  Обязательно
+                                </label>
+                              ) : field.is_required ? (
+                                "Да"
+                              ) : (
+                                "Нет"
+                              )}
+                            </td>
+                            <td className="px-3 py-3 text-muted-foreground">
+                              {isEditing && form ? (
+                                <div className="space-y-2">
+                                  <Input
+                                    value={form.default_value}
+                                    onChange={(event) => handleFieldEditChange("default_value", event.target.value)}
+                                    placeholder='"text" или {"count":2}'
+                                    className="h-8"
+                                  />
+                                  <div className="grid gap-2 sm:grid-cols-3">
+                                    <Input
+                                      value={form.min_value}
+                                      onChange={(event) => handleFieldEditChange("min_value", event.target.value)}
+                                      placeholder="min"
+                                      className="h-8"
+                                    />
+                                    <Input
+                                      value={form.max_value}
+                                      onChange={(event) => handleFieldEditChange("max_value", event.target.value)}
+                                      placeholder="max"
+                                      className="h-8"
+                                    />
+                                    <Input
+                                      value={form.step}
+                                      onChange={(event) => handleFieldEditChange("step", event.target.value)}
+                                      placeholder="step"
+                                      className="h-8"
+                                    />
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="space-y-1">
+                                  <div>{formatFieldDefault(field.default_value)}</div>
+                                  {(field.min_value !== null || field.max_value !== null || field.step !== null) && (
+                                    <div className="text-xs text-muted-foreground">
+                                      {field.min_value !== null && field.min_value !== undefined
+                                        ? `мин: ${field.min_value}`
+                                        : null}
+                                      {field.max_value !== null && field.max_value !== undefined
+                                        ? `${field.min_value !== null && field.min_value !== undefined ? ", " : ""}макс: ${field.max_value}`
+                                        : null}
+                                      {field.step !== null && field.step !== undefined
+                                        ? `${
+                                            field.min_value !== null || field.max_value !== null ? ", " : ""
+                                          }шаг: ${field.step}`
+                                        : null}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-3 py-3 text-muted-foreground">
+                              {isEditing && form ? (
+                                <Textarea
+                                  value={form.options}
+                                  onChange={(event) => handleFieldEditChange("options", event.target.value)}
+                                  rows={2}
+                                  placeholder='["var1", "var2"]'
+                                />
+                              ) : formatFieldOptions(field.options)}
+                            </td>
+                            <td className="px-3 py-3">
+                              <div className="flex flex-wrap items-center justify-end gap-1">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  disabled={index === 0 || reordering}
+                                  onClick={() => handleReorder(field.id, "up")}
+                                  title="Выше"
+                                >
+                                  <ChevronUp className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  disabled={index === fieldsSorted.length - 1 || reordering}
+                                  onClick={() => handleReorder(field.id, "down")}
+                                  title="Ниже"
+                                >
+                                  <ChevronDown className="h-4 w-4" />
+                                </Button>
+
+                                {isEditing ? (
+                                  <>
+                                    <Button
+                                      type="button"
+                                      size="icon"
+                                      variant="secondary"
+                                      disabled={savingFieldId === field.id}
+                                      onClick={() => handleSaveField(field.id)}
+                                      title="Сохранить"
+                                    >
+                                      {savingFieldId === field.id ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <Save className="h-4 w-4" />
+                                      )}
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="icon"
+                                      variant="ghost"
+                                      onClick={cancelFieldEdit}
+                                      title="Отмена"
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => openFieldEditor(field.id)}
+                                    title="Редактировать"
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                )}
+
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleDeleteField(field.id)}
+                                  title="Удалить"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              {isEditing && fieldEditError ? (
+                                <div className="mt-2 text-xs text-destructive">{fieldEditError}</div>
+                              ) : null}
+                            </td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
