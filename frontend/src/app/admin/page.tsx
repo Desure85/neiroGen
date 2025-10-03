@@ -131,35 +131,49 @@ function AdminContent() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      <Card className="bg-card border border-border">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <Card className="bg-card border border-border shadow-sm">
         <CardHeader>
           <CardTitle>Панель администратора</CardTitle>
           <CardDescription>Управление шаблонами и настройками</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-sm text-muted-foreground mb-4">
-            Вы вошли как: {user.name} · {user.email}
           </div>
           <ExerciseTemplates />
         </CardContent>
       </Card>
 
-      <ComfyEmbed />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="space-y-6">
+          <ComfyEmbed />
+        </div>
+        <div className="space-y-6">
+          <Card className="bg-card border border-border shadow-sm w-full">
+            <CardHeader>
+              <CardTitle>Статистика</CardTitle>
+              <CardDescription>Мониторинг основных показателей</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-sm text-muted-foreground">В разработке</div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
-      <Card className="bg-card border border-border">
+      <Card className="bg-card border border-border shadow-sm w-full">
         <CardHeader>
           <CardTitle>ComfyUI пресеты</CardTitle>
           <CardDescription>Список и создание пресетов для генерации</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex justify-between items-center mb-4">
+        <CardContent className="space-y-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="text-sm text-muted-foreground">{totalPresetsText}</div>
             <Button onClick={() => setCreateOpen(s => !s)}>{createOpen ? 'Скрыть форму' : 'Создать пресет'}</Button>
           </div>
           {createOpen && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div className="space-y-3">
                 <label className="text-sm">Название</label>
                 <Input value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Например: SD Simple" />
                 <label className="text-sm">Описание</label>
@@ -167,10 +181,11 @@ function AdminContent() {
                 <label className="text-sm">Defaults (JSON)</label>
                 <Textarea rows={8} value={form.defaults} onChange={(e) => setForm(f => ({ ...f, defaults: e.target.value }))} />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <label className="text-sm">Graph (JSON)</label>
                 <Textarea rows={16} value={form.graph} onChange={(e) => setForm(f => ({ ...f, graph: e.target.value }))} />
-                <div className="text-right">
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={resetForm}>Очистить</Button>
                   <Button onClick={handleCreatePreset}>Сохранить</Button>
                 </div>
               </div>
@@ -179,30 +194,26 @@ function AdminContent() {
 
           <div className="space-y-3">
             {presets.map(p => (
-              <div key={p.id} className="p-3 rounded border border-border flex items-center justify-between">
-                <div>
-                  <div className="font-medium">{p.name} {p.enabled ? '' : '(выключен)'}</div>
+              <div key={p.id} className="flex flex-col gap-3 rounded-lg border border-border bg-muted/30 p-3 shadow-sm md:flex-row md:items-center md:justify-between w-full">
+                <div className="space-y-1">
+                  <div className="font-medium text-foreground">{p.name} {p.enabled ? '' : '(выключен)'}</div>
                   <div className="text-sm text-muted-foreground">ID: {p.id} · {p.description || 'Без описания'}</div>
+                  <div className="text-xs text-muted-foreground">обновлён: {p.updated_at?.replace('T',' ').slice(0, 19) || '—'}</div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    className="inline-flex items-center justify-center whitespace-nowrap rounded-md border px-3 py-1 text-sm"
-                    onClick={() => handleTogglePreset(p)}
-                  >
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => handleTogglePreset(p)}>
                     {p.enabled ? 'Выключить' : 'Включить'}
-                  </button>
-                  <button
-                    className="inline-flex items-center justify-center whitespace-nowrap rounded-md border px-3 py-1 text-sm text-red-600"
-                    onClick={() => handleDeletePreset(p)}
-                  >
+                  </Button>
+                  <Button variant="destructive" size="sm" onClick={() => handleDeletePreset(p)}>
                     Удалить
-                  </button>
-                  <div className="text-xs text-muted-foreground ml-2">обновлён: {p.updated_at?.replace('T',' ').slice(0, 19) || '—'}</div>
+                  </Button>
                 </div>
               </div>
             ))}
-            {presets.length === 0 && !loadingPresets && (
-              <div className="text-sm text-muted-foreground">Пока нет пресетов</div>
+            {presets.length === 0 && (
+              <div className="rounded-lg border border-dashed border-border/60 bg-muted/20 p-6 text-center text-sm text-muted-foreground w-full">
+                Пока нет пресетов
+              </div>
             )}
           </div>
         </CardContent>

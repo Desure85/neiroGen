@@ -56,7 +56,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const data = await getMe()
-      applyUser(data)
+      if (data) {
+        applyUser(data)
+      } else {
+        applyUser(null)
+      }
     } catch (err: any) {
       if (!mountedRef.current) return
 

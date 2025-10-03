@@ -444,6 +444,16 @@ export const apiFetch = async (input: RequestInfo, init?: RequestInit) => {
 
 export async function getMe() {
   const res = await apiFetch('/api/auth/me')
-  if (!res.ok) throw new Error('HTTP ' + res.status)
+
+  if (res.status === 401 || res.status === 419) {
+    return null
+  }
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    const message = body?.message || `HTTP ${res.status}`
+    throw new Error(message)
+  }
+
   return res.json()
 }

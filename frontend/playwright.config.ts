@@ -14,7 +14,7 @@ export default defineConfig({
   webServer: {
     command:
       process.env.PLAYWRIGHT_WEB_SERVER ||
-      'NEXT_PUBLIC_API_URL=http://app:8000 npm run dev -- --port 3001 --hostname 0.0.0.0',
+      'NEXT_PUBLIC_API_URL= npm run dev -- --port 3001 --hostname 0.0.0.0',
     port: Number(process.env.PLAYWRIGHT_WEB_SERVER_PORT || 3001),
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

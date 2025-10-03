@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import {
   Users,
@@ -27,6 +27,7 @@ import { listComfyPresets, generateWithPreset, type ComfyPreset } from '@/lib/co
 import ProtectedRoute from '@/components/protected-route'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
+import { DashboardTabsList } from '@/components/dashboard-tabs-list'
 
 interface Child {
   id: number
@@ -107,6 +108,16 @@ function TherapistDashboardContent() {
     const acc = Number(s?.results?.accuracy ?? 0)
     return sum + (acc >= 80 ? 1 : 0)
   }, 0)
+
+  const dashboardTabs = [
+    { value: 'overview', label: t('tab_overview') },
+    { value: 'children', label: t('tab_children') },
+    { value: 'generator', label: t('tab_generator') },
+    { value: 'constructor', label: t('tab_constructor') },
+    { value: 'blocks', label: t('tab_blocks') },
+    { value: 'sessions', label: t('tab_sessions') },
+    { value: 'comfy', label: 'ComfyUI' },
+  ]
 
   // ComfyUI presets state
   const [comfyPresets, setComfyPresets] = useState<ComfyPreset[]>([])
@@ -584,15 +595,11 @@ function TherapistDashboardContent() {
           </Card>
         )}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7">
-            <TabsTrigger value="overview">{t('tab_overview')}</TabsTrigger>
-            <TabsTrigger value="children">{t('tab_children')}</TabsTrigger>
-            <TabsTrigger value="generator">{t('tab_generator')}</TabsTrigger>
-            <TabsTrigger value="constructor">{t('tab_constructor')}</TabsTrigger>
-            <TabsTrigger value="blocks">{t('tab_blocks')}</TabsTrigger>
-            <TabsTrigger value="sessions">{t('tab_sessions')}</TabsTrigger>
-            <TabsTrigger value="comfy">ComfyUI</TabsTrigger>
-          </TabsList>
+          <DashboardTabsList
+            items={dashboardTabs}
+            baseClassName="grid w-full"
+            columnsClassName="grid-cols-7"
+          />
 
           <TabsContent value="overview" className="space-y-6">
             {/* Статистика */}

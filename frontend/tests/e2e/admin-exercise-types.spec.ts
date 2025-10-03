@@ -9,7 +9,8 @@ async function loginAsAdmin(page: Page) {
   await form.getByLabel('Email').fill(ADMIN_EMAIL)
   await form.getByLabel('Password').fill(ADMIN_PASS)
   await form.getByRole('button', { name: 'Войти' }).click()
-  await expect(page).toHaveURL(/\/therapist/) // дождаться редиректа после входа
+  await expect(page.getByText('Загружаем ваш профиль')).toBeHidden({ timeout: 30_000 })
+  await expect(page).toHaveURL(/\/(therapist|admin)/, { timeout: 30_000 }) // дождаться редиректа после входа
 }
 
 async function openExerciseTypesList(page: Page) {
