@@ -233,11 +233,15 @@ export default function PatientSessionPage() {
             <div className="bg-blue-50 rounded-lg p-4 space-y-3">
               <p className="font-semibold">Как выполнить задание:</p>
               <ol className="list-decimal list-inside space-y-2 text-gray-700">
-                <li>Нажмите кнопку <strong>"Печать листа"</strong> или <strong>"Скачать"</strong></li>
+                <li>
+                  Нажмите кнопку <strong>&laquo;Печать листа&raquo;</strong> или <strong>&laquo;Скачать&raquo;</strong>
+                </li>
                 <li>Распечатайте лист с заданием</li>
                 <li>Выполните задание на распечатанном листе</li>
                 <li>Сфотографируйте или отсканируйте выполненную работу</li>
-                <li>Загрузите файл и нажмите <strong>"Отправить работу"</strong></li>
+                <li>
+                  Загрузите файл и нажмите <strong>&laquo;Отправить работу&raquo;</strong>
+                </li>
               </ol>
             </div>
           </CardContent>

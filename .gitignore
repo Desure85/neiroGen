@@ -24,6 +24,9 @@ yarn-error.log*
 .cache/
 logs/
 data/
+test-results
+test-results/*
+
 # --- Environment files ---
 .env
 .env.*

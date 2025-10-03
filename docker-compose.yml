@@ -137,6 +137,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      target: dev
     container_name: neirogen_frontend
     restart: unless-stopped
     profiles: ["dev"]

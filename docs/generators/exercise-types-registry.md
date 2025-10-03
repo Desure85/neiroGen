@@ -56,6 +56,18 @@ title: "Реестр типов упражнений"
 }
 ```
 
+### Управление полями типа
+
+| Метод | Маршрут | Описание |
+|---|---|---|
+| `POST` | `/api/admin/exercise-types/{id}/fields` | Создание нового поля. Параметры соответствуют `CreateExerciseTypeFieldPayload` (`label`, `key`, `field_type`, `is_required`, `default_value`, `options`, лимиты и подсказка). |
+| `PATCH` | `/api/admin/exercise-types/{id}/fields/{fieldId}` | Обновление существующего поля. Все свойства опциональны, но проходят ту же нормализацию, что и при создании. |
+| `POST` | `/api/admin/exercise-types/{id}/fields/reorder` | Сохраняет порядок полей. Тело запроса: `{ "order": [<id поля>, ...] }`. |
+
+- Поля сортируются по `display_order`. backend обновляет индексы после любой операции reorder.
+- На фронтенде `frontend/src/app/admin/exercise-types/[id]/page.tsx` использует `@dnd-kit` для drag&drop. Состояние обновляется локально, затем отправляется на сервер через `reorderExerciseTypeFields()`.
+- Редактирование полей выполняется через inline-форму: применяется `updateExerciseTypeField()` с валидацией (`UpdateExerciseTypeFieldRequest`).
+
 # Фронтенд
 
 ## Генератор упражнений
@@ -68,23 +80,24 @@ title: "Реестр типов упражнений"
 
 ## Конструктор рабочих листов
 
-Компонент `WorksheetGenerator` (`frontend/src/components/worksheets/worksheet-generator.tsx`):
 
 - Загружает упражнения (`/api/exercises`) и словарь типов (`fetchExerciseTypes()`).
 - Отображает человекочитаемые названия в фильтрах и карточках, используя `exercise.exerciseType` или `exercise.exercise_type_id`.
 - Показывает ошибку загрузки словаря в UI (`<Alert variant="destructive">`).
 
-# Администрирование
+## Администрирование
 
 - Управление типами доступно через админ-панель `frontend/src/app/admin/exercise-types/`.
 - CRUD эндпоинты: `POST /api/admin/exercise-types`, `PUT /api/admin/exercise-types/{id}`, `DELETE /api/admin/exercise-types/{id}`.
 - Для добавления пользовательских полей используйте `POST /api/admin/exercise-types/{id}/fields`.
+- Перестановка и редактирование полей выполняются прямо в UI: drag&drop (handle-индикатор слева) меняет порядок, кнопка «Редактировать» открывает inline-форму. При успешной операции показывается toast, ошибки валидируются по API.
 
 # Миграции и сиды
 
 - Таблицы определены миграциями в `app/database/migrations/**/create_exercise_types_table.php` и `...exercise_type_fields_table.php`.
 - Начальные данные можно загрузить сидером `ExerciseTypeSeeder`.
 
+# Описание новых эндпоинтов
 # Проверки
 
 После изменения схемы или словаря рекомендуется прогнать:

@@ -1,10 +1,39 @@
 "use client"
 
-import { ChangeEvent, Dispatch, FormEvent, SetStateAction, useCallback, useEffect, useMemo, useState } from "react"
+import {
+  ChangeEvent,
+  Dispatch,
+  FormEvent,
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react"
+import type { CSSProperties } from "react"
 import Link from "next/link"
 import { notFound, useParams, useRouter } from "next/navigation"
 import { useToast } from "@/components/ui/use-toast"
-import { ChevronDown, ChevronUp, Loader2, Pencil, Save, Trash2, X } from "lucide-react"
+import {
+  DndContext,
+  DragEndEvent,
+  DragStartEvent,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  DragOverlay,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core"
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
+import { ChevronDown, ChevronUp, GripVertical, Loader2, Pencil, Save, Trash2, X } from "lucide-react"
 import {
   AdminExerciseTypeDetailDto,
   createExerciseTypeField,
@@ -45,9 +74,286 @@ interface NewFieldForm {
   help_text: string
 }
 
+function DragOverlayCard({ field }: { field: ExerciseTypeFieldDto | null }) {
+  if (!field) return null
+
+  return (
+    <div className="min-w-[220px] rounded-md border border-border bg-background px-3 py-2 shadow-lg">
+      <div className="font-medium">{field.label}</div>
+      <div className="font-mono text-xs text-muted-foreground">{field.key}</div>
+      <div className="text-[10px] uppercase text-muted-foreground">{field.field_type}</div>
+    </div>
+  )
+}
+
 type FieldEditForm = NewFieldForm
 
 const FIELD_TYPE_OPTIONS = ["string", "text", "integer", "number", "boolean", "enum", "array_enum", "json"] as const
+
+type SortableFieldRowProps = {
+  field: ExerciseTypeFieldDto
+  index: number
+  isEditing: boolean
+  form: FieldEditForm | null
+  reordering: boolean
+  savingFieldId: number | null
+  fieldEditError: string | null
+  canMoveUp: boolean
+  canMoveDown: boolean
+  onEditChange: <K extends keyof FieldEditForm>(field: K, value: FieldEditForm[K]) => void
+  onToggleRequired: (event: ChangeEvent<HTMLInputElement>) => void
+  onReorder: (id: number, direction: "up" | "down") => void
+  onSave: (id: number) => void
+  onCancel: () => void
+  onDelete: (id: number) => void
+  onEdit: (id: number) => void
+}
+
+function SortableFieldRow(props: SortableFieldRowProps) {
+  const {
+    field,
+    index,
+    isEditing,
+    form,
+    reordering,
+    savingFieldId,
+    fieldEditError,
+    canMoveUp,
+    canMoveDown,
+    onEditChange,
+    onToggleRequired,
+    onReorder,
+    onSave,
+    onCancel,
+    onDelete,
+    onEdit,
+  } = props
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: field.id })
+
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+    background: isDragging ? "rgba(59,130,246,0.07)" : undefined,
+  }
+
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className="border-b border-border/60 last:border-b-0 align-top"
+      data-testid={`field-row-${field.id}`}
+    >
+      <td className="px-3 py-3 text-muted-foreground">
+        <button
+          type="button"
+          className="flex items-center gap-1 text-xs text-muted-foreground"
+          {...attributes}
+          {...listeners}
+          data-testid="drag-handle"
+        >
+          <GripVertical className="h-4 w-4" />
+          {index + 1}
+        </button>
+      </td>
+      <td className="px-3 py-3 font-mono text-xs text-muted-foreground">
+        {isEditing && form ? (
+          <Input value={form.key} onChange={(event) => onEditChange("key", event.target.value)} className="h-8" />
+        ) : (
+          field.key
+        )}
+      </td>
+      <td className="px-3 py-3">
+        {isEditing && form ? (
+          <div className="space-y-2">
+            <Input
+              data-testid="field-edit-label"
+              value={form.label}
+              onChange={(event) => onEditChange("label", event.target.value)}
+              className="h-8"
+            />
+            <Textarea
+              data-testid="field-edit-help-text"
+              value={form.help_text}
+              onChange={(event) => onEditChange("help_text", event.target.value)}
+              rows={2}
+              placeholder="Help text"
+            />
+          </div>
+        ) : (
+          <div className="space-y-1">
+            <div className="text-foreground">{field.label}</div>
+            {field.help_text ? <div className="text-xs text-muted-foreground">{field.help_text}</div> : null}
+          </div>
+        )}
+      </td>
+      <td className="px-3 py-3 text-muted-foreground">
+        {isEditing && form ? (
+          <select
+            className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+            value={form.field_type}
+            onChange={(event) => onEditChange("field_type", event.target.value)}
+          >
+            {FIELD_TYPE_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        ) : (
+          field.field_type
+        )}
+      </td>
+      <td className="px-3 py-3 text-muted-foreground">
+        {isEditing && form ? (
+          <label className="flex items-center gap-2 text-xs">
+            <input type="checkbox" checked={form.is_required} onChange={onToggleRequired} />
+            Обязательно
+          </label>
+        ) : field.is_required ? (
+          "Да"
+        ) : (
+          "Нет"
+        )}
+      </td>
+      <td className="px-3 py-3 text-muted-foreground">
+        {isEditing && form ? (
+          <div className="space-y-2">
+            <Input
+              value={form.default_value}
+              onChange={(event) => onEditChange("default_value", event.target.value)}
+              placeholder='"text" или {"count":2}'
+              className="h-8"
+            />
+            <div className="grid gap-2 sm:grid-cols-3">
+              <Input
+                value={form.min_value}
+                onChange={(event) => onEditChange("min_value", event.target.value)}
+                placeholder="min"
+                className="h-8"
+              />
+              <Input
+                value={form.max_value}
+                onChange={(event) => onEditChange("max_value", event.target.value)}
+                placeholder="max"
+                className="h-8"
+              />
+              <Input
+                value={form.step}
+                onChange={(event) => onEditChange("step", event.target.value)}
+                placeholder="step"
+                className="h-8"
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            <div>{formatFieldDefault(field.default_value)}</div>
+            {(field.min_value !== null || field.max_value !== null || field.step !== null) && (
+              <div className="text-xs text-muted-foreground">
+                {field.min_value !== null && field.min_value !== undefined ? `мин: ${field.min_value}` : null}
+                {field.max_value !== null && field.max_value !== undefined
+                  ? `${field.min_value !== null && field.min_value !== undefined ? ", " : ""}макс: ${field.max_value}`
+                  : null}
+                {field.step !== null && field.step !== undefined
+                  ? `${field.min_value !== null || field.max_value !== null ? ", " : ""}шаг: ${field.step}`
+                  : null}
+              </div>
+            )}
+          </div>
+        )}
+      </td>
+      <td className="px-3 py-3 text-muted-foreground">
+        {isEditing && form ? (
+          <Textarea
+            value={form.options}
+            onChange={(event) => onEditChange("options", event.target.value)}
+            rows={2}
+            placeholder='["var1", "var2"]'
+          />
+        ) : (
+          formatFieldOptions(field.options)
+        )}
+      </td>
+      <td className="px-3 py-3">
+        <div className="flex flex-wrap items-center justify-end gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            disabled={!canMoveUp || reordering}
+            onClick={() => onReorder(field.id, "up")}
+            title="Выше"
+            data-testid="field-move-up"
+          >
+            <ChevronUp className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            disabled={!canMoveDown || reordering}
+            onClick={() => onReorder(field.id, "down")}
+            title="Ниже"
+            data-testid="field-move-down"
+          >
+            <ChevronDown className="h-4 w-4" />
+          </Button>
+
+          {isEditing ? (
+            <>
+              <Button
+                type="button"
+                size="icon"
+                variant="secondary"
+                disabled={savingFieldId === field.id}
+                onClick={() => onSave(field.id)}
+                title="Сохранить"
+                data-testid="field-edit-save"
+              >
+                {savingFieldId === field.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              </Button>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                onClick={onCancel}
+                title="Отмена"
+                data-testid="field-edit-cancel"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => onEdit(field.id)}
+              title="Редактировать"
+              data-testid="field-edit-button"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          )}
+
+          <Button type="button" variant="ghost" size="icon" onClick={() => onDelete(field.id)} title="Удалить">
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+        {isEditing && fieldEditError ? <div className="mt-2 text-xs text-destructive">{fieldEditError}</div> : null}
+      </td>
+    </tr>
+  )
+}
 
 function stringifyFieldValue(value: unknown): string {
   if (value === null || value === undefined) {
@@ -235,7 +541,104 @@ export default function ExerciseTypeDetailPage() {
   const [editingFieldId, setEditingFieldId] = useState<number | null>(null)
   const [editingFieldForm, setEditingFieldForm] = useState<FieldEditForm | null>(null)
   const [savingFieldId, setSavingFieldId] = useState<number | null>(null)
+  const [draggingFieldId, setDraggingFieldId] = useState<number | null>(null)
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
   const [reordering, setReordering] = useState(false)
+
+  const fieldsSorted = useMemo(() => {
+    if (!data?.fields) return []
+    return [...data.fields].sort((a, b) => a.display_order - b.display_order)
+  }, [data])
+
+  const activeField = useMemo(
+    () => fieldsSorted.find((field) => field.id === draggingFieldId) ?? null,
+    [fieldsSorted, draggingFieldId],
+  )
+
+  const commitReorder = useCallback(
+    async (reordered: ExerciseTypeFieldDto[], origin: ExerciseTypeFieldDto[]) => {
+      if (!data) return
+
+      const normalized = reordered.map((field, idx) => ({ ...field, display_order: idx }))
+      const order = normalized.map((field) => field.id)
+
+      setReordering(true)
+      setData((prev) => (prev ? { ...prev, fields: normalized } : prev))
+      setFieldError(null)
+
+      try {
+        await reorderExerciseTypeFields(data.id, order)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Не удалось изменить порядок"
+        setFieldError(message)
+        setData((prev) => (prev ? { ...prev, fields: origin } : prev))
+        toast({
+          title: "Ошибка",
+          description: message,
+          variant: "destructive",
+        })
+        return
+      } finally {
+        setReordering(false)
+      }
+
+      toast({
+        title: "Порядок обновлён",
+        description: "Последовательность полей сохранена.",
+      })
+    },
+    [data, toast],
+  )
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setDraggingFieldId(Number(event.active.id))
+  }, [])
+
+  const handleDragCancel = useCallback(() => {
+    setDraggingFieldId(null)
+  }, [])
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      setDraggingFieldId(null)
+      if (!event.over) return
+
+      const activeId = Number(event.active.id)
+      const overId = Number(event.over.id)
+      if (Number.isNaN(activeId) || Number.isNaN(overId) || activeId === overId) {
+        return
+      }
+
+      const original = [...fieldsSorted]
+      const oldIndex = original.findIndex((field) => field.id === activeId)
+      const newIndex = original.findIndex((field) => field.id === overId)
+      if (oldIndex === -1 || newIndex === -1) {
+        return
+      }
+
+      const reordered = arrayMove(original, oldIndex, newIndex)
+      void commitReorder(reordered, original)
+    },
+    [fieldsSorted, commitReorder],
+  )
+
+  const handleReorder = useCallback(
+    async (fieldId: number, direction: "up" | "down") => {
+      const original = [...fieldsSorted]
+      const index = original.findIndex((field) => field.id === fieldId)
+      if (index === -1) return
+
+      const targetIndex = direction === "up" ? index - 1 : index + 1
+      if (targetIndex < 0 || targetIndex >= original.length) return
+
+      const reordered = arrayMove(original, index, targetIndex)
+      await commitReorder(reordered, original)
+    },
+    [fieldsSorted, commitReorder],
+  )
 
   const detailToFormState = useCallback(
     (detail: AdminExerciseTypeDetailDto): ExerciseTypeFormState => ({
@@ -440,43 +843,6 @@ export default function ExerciseTypeDetailPage() {
     setEditingFieldForm((prev) => (prev ? { ...prev, is_required: checked } : prev))
   }
 
-  const handleReorder = async (fieldId: number, direction: "up" | "down") => {
-    if (!data) return
-    const fields = [...data.fields].sort((a, b) => a.display_order - b.display_order)
-    const index = fields.findIndex((field) => field.id === fieldId)
-    if (index === -1) return
-    const targetIndex = direction === "up" ? index - 1 : index + 1
-    if (targetIndex < 0 || targetIndex >= fields.length) {
-      return
-    }
-
-    const reordered = [...fields]
-    const [moved] = reordered.splice(index, 1)
-    reordered.splice(targetIndex, 0, moved)
-
-    const order = reordered.map((field) => field.id)
-
-    try {
-      setReordering(true)
-      await reorderExerciseTypeFields(data.id, order)
-      setData((prev) => (prev ? { ...prev, fields: reordered } : prev))
-      toast({
-        title: "Порядок обновлён",
-        description: "Последовательность полей сохранена.",
-      })
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Не удалось изменить порядок"
-      setFieldError(message)
-      toast({
-        title: "Ошибка",
-        description: message,
-        variant: "destructive",
-      })
-    } finally {
-      setReordering(false)
-    }
-  }
-
   const handleToggleActive = async () => {
     if (!data || !formState) return
 
@@ -509,11 +875,6 @@ export default function ExerciseTypeDetailPage() {
       setSaving(false)
     }
   }
-
-  const fieldsSorted = useMemo(() => {
-    if (!data?.fields) return []
-    return [...data.fields].sort((a, b) => a.display_order - b.display_order)
-  }, [data])
 
   const handleFormChange: ExerciseTypeFormChangeHandler = (field, value) => {
     setFormState((prev) => (prev ? { ...prev, [field]: value } : prev))
@@ -793,7 +1154,10 @@ export default function ExerciseTypeDetailPage() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[720px] table-fixed border-collapse">
+                  <table
+                    className="w-full min-w-[720px] table-fixed border-collapse"
+                    data-testid="exercise-type-fields-table"
+                  >
                     <thead>
                       <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
                         <th className="px-3 py-2">#</th>
@@ -1035,7 +1399,7 @@ export default function ExerciseTypeDetailPage() {
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground">
               <p>
-                Упражнений с этим типом: <strong>{data.exercises_count ?? 0}</strong>. Перейдите в раздел "Упражнения", чтобы увидеть детальный список и настроить параметры.
+                Упражнений с этим типом: <strong>{data.exercises_count ?? 0}</strong>. Перейдите в раздел &laquo;Упражнения&raquo;, чтобы увидеть детальный список и настроить параметры.
               </p>
               {data.updated_at && (
                 <p className="mt-2 text-xs">Последнее обновление: {new Date(data.updated_at).toLocaleString()}</p>

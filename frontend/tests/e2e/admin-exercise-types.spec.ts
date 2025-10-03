@@ -6,8 +6,8 @@ const ADMIN_PASS = process.env.E2E_ADMIN_PASS || 'password'
 async function loginAsAdmin(page: Page) {
   await page.goto('/login')
   const form = page.locator('form')
-  await form.getByRole('textbox', { name: 'you@example.com' }).fill(ADMIN_EMAIL)
-  await form.getByRole('textbox', { name: '••••••••' }).fill(ADMIN_PASS)
+  await form.getByLabel('Email').fill(ADMIN_EMAIL)
+  await form.getByLabel('Password').fill(ADMIN_PASS)
   await form.getByRole('button', { name: 'Войти' }).click()
   await expect(page).toHaveURL(/\/therapist/) // дождаться редиректа после входа
 }
@@ -90,11 +90,46 @@ test.describe.serial('Admin exercise types', () => {
     await expect(toast).toContainText('Поле добавлено')
 
     const newFieldRow = page.locator('tbody tr').filter({ hasText: fieldLabel }).first()
-    await expect(newFieldRow).toBeVisible()
 
     page.once('dialog', (dialog) => dialog.accept())
     await newFieldRow.getByRole('button', { name: 'Удалить' }).click()
     await expect(toast).toContainText('Поле удалено')
     await expect(page.locator('tbody tr').filter({ hasText: fieldLabel })).toHaveCount(0)
-  })
+})
+
+test('reorder and edit exercise type field', async ({ page }) => {
+  await openExerciseTypesList(page)
+
+  const firstRow = page.locator('tbody tr').first()
+  await firstRow.locator('a', { hasText: 'Открыть' }).click()
+  await page.waitForURL('**/admin/exercise-types/*')
+
+  const table = page.getByTestId('exercise-type-fields-table')
+  await expect(table.locator('tbody tr').nth(1)).toBeVisible()
+
+  const firstField = table.locator('tbody tr').first()
+  const secondField = table.locator('tbody tr').nth(1)
+
+  await firstField.getByTestId('drag-handle').dragTo(secondField.getByTestId('drag-handle'))
+
+  const toast = page.locator('[role="status"], [role="alert"]')
+  await expect(toast).toContainText('Порядок обновлён')
+
+  const rowToEdit = table.locator('tbody tr').first()
+  await rowToEdit.getByTestId('field-edit-button').click()
+
+  const labelInput = page.getByTestId('field-edit-label')
+  const originalValue = await labelInput.inputValue()
+  const updatedValue = `${originalValue} (e2e)`
+  await labelInput.fill(updatedValue)
+  await page.getByTestId('field-edit-save').click()
+
+  await expect(toast).toContainText('Поле обновлено')
+  await expect(rowToEdit).toContainText(updatedValue)
+
+  await rowToEdit.getByTestId('field-edit-button').click()
+  await labelInput.fill(originalValue)
+  await page.getByTestId('field-edit-save').click()
+  await expect(toast).toContainText('Поле обновлено')
+})
 })

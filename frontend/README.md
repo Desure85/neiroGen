@@ -13,6 +13,31 @@ make frontend-dev
 make frontend-build
 ```
 
+## Docker цели
+
+- **`prod`**: минимальный runtime-образ без dev-зависимостей.
+  ```bash
+  docker build --target prod -t neirogen/frontend:prod ./frontend
+  ```
+- **`dev`**: основан на Playwright-образе, включает браузеры и dev-зависимости. Используется `docker compose`.
+  ```bash
+  docker compose build frontend  # автоматически выбирает target=dev
+  ```
+
+После пересборки dev-контейнера прокачайте зависимости (они лежат в volume `frontend_node_modules`):
+```bash
+docker compose run --rm frontend npm ci
+```
+
+### Запуск тестов
+
+- Линтер: `docker compose run --rm frontend npm run lint`
+- Unit/RTL: `docker compose run --rm frontend npm test`
+- Playwright e2e: браузеры уже доступны в dev-стейдже
+  ```bash
+  docker compose run --rm frontend npx playwright test
+  ```
+
 ## Основные компоненты:
 
 ### ThemeProvider

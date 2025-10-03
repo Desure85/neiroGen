@@ -797,14 +797,21 @@ export function GraphicDictationEditor({ onSave, initialPayload }: GraphicDictat
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
               <p className="font-semibold text-blue-900 mb-1">💡 Подсказка:</p>
               <ul className="text-blue-800 space-y-1 ml-4 list-disc">
-                <li>Красная точка <strong>"S"</strong> — начальная позиция диктанта</li>
+                <li>Красная точка <strong>&laquo;S&raquo;</strong> — начальная позиция диктанта</li>
                 <li>Кликните на любой узел сетки, чтобы начать рисование пути</li>
                 <li>Первая точка пути будет <strong className="text-green-600">зелёной</strong></li>
                 <li><strong className="text-green-600">Зелёная линия</strong> (пунктир) — превью прямой линии/диагонали</li>
-                <li><strong className="text-orange-600">Оранжевая линия</strong> (пунктир) — превью "лесенки" (диагональ не через узлы)</li>
+                <li>
+                  <strong className="text-orange-600">Оранжевая линия</strong> (пунктир) — превью &laquo;лесенки&raquo; (диагональ не через узлы)
+                </li>
                 <li>Кликните на существующую точку пути, чтобы удалить её</li>
-                <li>Чтобы <strong>замкнуть контур</strong>: кликните на первую (зелёную) точку или на "S" если путь начинается с неё</li>
-                <li>Чтобы <strong>переместить "S"</strong>: кликните на "S" (если путь не начинается с неё) или Alt+клик</li>
+                <li>
+                  Чтобы <strong>замкнуть контур</strong>: кликните на первую (зелёную) точку или на &laquo;S&raquo; если путь начинается
+                  с неё
+                </li>
+                <li>
+                  Чтобы <strong>переместить &laquo;S&raquo;</strong>: кликните на &laquo;S&raquo; (если путь не начинается с неё) или Alt+клик
+                </li>
               </ul>
             </div>
           )}
@@ -812,7 +819,9 @@ export function GraphicDictationEditor({ onSave, initialPayload }: GraphicDictat
           {isDraggingStart && (
             <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm">
               <p className="font-semibold text-orange-900">🔸 Режим перемещения начальной точки</p>
-              <p className="text-orange-700 text-xs mt-1">Кликните на нужный узел сетки, чтобы переместить стартовую позицию "S"</p>
+              <p className="text-orange-700 text-xs mt-1">
+                Кликните на нужный узел сетки, чтобы переместить стартовую позицию &laquo;S&raquo;
+              </p>
             </div>
           )}
           
@@ -831,8 +840,8 @@ export function GraphicDictationEditor({ onSave, initialPayload }: GraphicDictat
             
             return (
               <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm">
-                <p className="font-semibold text-green-900">✓ Путь начинается с точки "S"</p>
-                <p className="text-green-700 text-xs mt-1">Кликните на красную точку "S" чтобы замкнуть контур</p>
+                <p className="font-semibold text-green-900">✓ Путь начинается с точки &laquo;S&raquo;</p>
+                <p className="text-green-700 text-xs mt-1">Кликните на красную точку &laquo;S&raquo; чтобы замкнуть контур</p>
               </div>
             )
           })()}
