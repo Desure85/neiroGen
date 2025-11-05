@@ -1,0 +1,51 @@
+includes:
+    # Larastan расширение для Laravel специфичных правил
+    # Установить: composer require --dev larastan/larastan
+    # - vendor/larastan/larastan/extension.neon
+    
+    # Baseline - зафиксированные ошибки (не блокируют CI)
+    - phpstan-baseline.neon
+
+parameters:
+    # Уровень строгости: 0 (минимум) до 9 (максимум)
+    # Начинаем с 5, после устранения ошибок можно повысить
+    level: 5
+    
+    # Пути для анализа
+    paths:
+        - app
+        - database/factories
+        - database/seeders
+        - routes
+        - tests
+    
+    # Исключения из анализа
+    excludePaths:
+        - app/Console/Kernel.php
+        - vendor
+        - storage
+        - bootstrap/cache
+    
+    # Laravel специфичные настройки (требуют larastan)
+    # checkMissingIterableValueType: false
+    # checkGenericClassInNonGenericObjectType: false
+    
+    # Игнорировать определенные ошибки (временно)
+    # Можно убрать после исправления кода
+    ignoreErrors:
+        # Примеры игнорирования (раскомментировать при необходимости):
+        # - '#Call to an undefined method Illuminate\\Database\\Eloquent\\Builder#'
+        # - '#Unsafe usage of new static#'
+    
+    # Baseline file (создан 5 ноября 2025, 634 ошибки)
+    # Создать: vendor/bin/phpstan analyse --generate-baseline
+    # Подключен в секции includes выше
+    
+    # Обнаружение неиспользуемых переменных
+    reportUnmatchedIgnoredErrors: false
+    
+    # Проверка типов в PHPDoc
+    checkPhpDocMissingReturn: true
+    
+    # Строгая проверка Union типов
+    checkUnionTypes: true

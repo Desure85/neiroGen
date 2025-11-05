@@ -1,11 +1,15 @@
 "use client"
 
-import { useEffect, useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent } from '@/components/ui/tabs'
-import { Input } from '@/components/ui/input'
+import { useEffect, useState } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent } from "@/components/ui/tabs"
+import { Input } from "@/components/ui/input"
+import { EmptyState } from "@/components/ui/empty-state"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { useToast } from "@/components/ui/use-toast"
 import {
   Users,
   Plus,
@@ -16,18 +20,23 @@ import {
   Award,
   Calendar,
   Search,
-  UserPlus
-} from 'lucide-react'
-import { ExerciseGenerator, ExercisePlayer, ContentBlockManager } from '@/components/exercise-components'
-import { ExerciseConstructor } from '@/components/exercise-constructor'
-import { useI18n } from '@/components/localization'
-import { cn } from '@/lib/utils'
-import { apiFetch } from '@/lib/api'
-import { listComfyPresets, generateWithPreset, type ComfyPreset } from '@/lib/comfy'
-import ProtectedRoute from '@/components/protected-route'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useAuth } from '@/lib/auth-context'
-import { DashboardTabsList } from '@/components/dashboard-tabs-list'
+  UserPlus,
+  AlertCircle
+} from "lucide-react"
+import { ExerciseGenerator, ExercisePlayer, ContentBlockManager } from "@/components/exercise-components"
+import { ExerciseConstructor } from "@/components/exercise-constructor"
+import { useI18n } from "@/components/localization"
+import { cn } from "@/lib/utils"
+import { apiFetch } from "@/lib/api"
+import { listComfyPresets, generateWithPreset, type ComfyPreset } from "@/lib/comfy"
+import ProtectedRoute from "@/components/protected-route"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { useAuth } from "@/lib/auth-context"
+import { DashboardHeader } from "@/components/dashboard-header"
+import { DashboardTabsGroup } from "@/components/dashboard-tabs-group"
+import { DashboardStatCard } from "@/components/dashboard-stat-card"
+import { SectionCard } from "@/components/section-card"
+import { ListHeader } from "@/components/list-header"
 
 interface Child {
   id: number
@@ -71,6 +80,7 @@ interface ExerciseResults {
 
 function TherapistDashboardContent() {
   const { t } = useI18n()
+  const { toast } = useToast()
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -270,7 +280,15 @@ function TherapistDashboardContent() {
 
   const handleCreateChild = () => {
     const trimmed = newChild.name.trim()
-    if (!trimmed) return
+    if (!trimmed) {
+      toast({
+        variant: "destructive",
+        title: "⚠️ Заполните имя",
+        description: "Имя ребёнка обязательно для заполнения",
+        duration: 3000,
+      })
+      return
+    }
     const payload = {
       name: trimmed,
       age: Number(newChild.age || 0),
@@ -289,15 +307,30 @@ function TherapistDashboardContent() {
         setShowAddChild(false)
         setNewChild({ name: '', age: 6, gender: 'male' })
         setActiveTab('children')
+        toast({
+          title: "✅ Ребёнок добавлен",
+          description: `${trimmed} успешно добавлен в список`,
+          duration: 3000,
+        })
       } catch (e) {
-        alert('Не удалось создать: ' + (e as any)?.message)
+        toast({
+          variant: "destructive",
+          title: "❌ Ошибка создания",
+          description: (e as any)?.message || 'Не удалось добавить ребёнка',
+          duration: 5000,
+        })
       }
     })()
   }
 
   const handleCreateSession = async () => {
     if (!sessionChildId) {
-      alert('Выберите ребёнка')
+      toast({
+        variant: "destructive",
+        title: "⚠️ Выберите ребёнка",
+        description: "Необходимо выбрать ребёнка для создания сессии",
+        duration: 3000,
+      })
       return
     }
 
@@ -508,102 +541,146 @@ function TherapistDashboardContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 dark:from-gray-900 dark:to-gray-800 text-foreground">
-      <div className="bg-card shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">{t('therapist_dashboard')}</h1>
-              <p className="text-sm text-muted-foreground">{t('therapist_subtitle')}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              {selectedChild && (
-                <>
-                  <div className="flex items-center gap-2 h-10 rounded-lg border border-border bg-muted/40 px-3 shadow-sm">
-                    <span className="text-lg leading-none">{selectedChild.avatar}</span>
-                    <span className="text-sm font-medium text-foreground truncate max-w-[180px]" title={selectedChild.name}>{selectedChild.name}</span>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-10 px-3 text-primary hover:text-primary"
-                    onClick={() => {
-                      setSelectedChild(null)
-                      setActiveTab('children')
-                      setShowAddChild(false)
-                    }}
-                  >
-                    Сменить
-                  </Button>
-                </>
-              )}
-              <Button onClick={() => setShowAddChild(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                {t('new_child')}
-              </Button>
-            </div>
+      <DashboardHeader
+        badge="Кабинет терапевта"
+        title={t('therapist_dashboard')}
+        description={t('therapist_subtitle')}
+        actions={
+          <div className="flex items-center gap-2">
+            {selectedChild ? (
+              <>
+                <div className="flex h-10 items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 shadow-sm">
+                  <span className="text-lg leading-none">{selectedChild.avatar}</span>
+                  <span className="max-w-[180px] truncate text-sm font-medium text-foreground" title={selectedChild.name}>
+                    {selectedChild.name}
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-10 px-3 text-primary hover:text-primary"
+                  onClick={() => {
+                    setSelectedChild(null)
+                    setActiveTab('children')
+                    setShowAddChild(false)
+                  }}
+                >
+                  Сменить
+                </Button>
+              </>
+            ) : null}
+            <Button onClick={() => setShowAddChild(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              {t('new_child')}
+            </Button>
           </div>
-        </div>
-      </div>
+        }
+      />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
         {showAddChild && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Добавить ребёнка</CardTitle>
-              <CardDescription>Укажите имя, возраст и пол</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label htmlFor="new-child-name" className="block text-sm mb-1">Имя</label>
-                  <Input
-                    id="new-child-name"
-                    value={newChild.name}
-                    onChange={(e) => setNewChild(s => ({ ...s, name: e.target.value }))}
-                    placeholder="Например: Саша"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="new-child-age" className="block text-sm mb-1">Возраст</label>
-                  <Input
-                    id="new-child-age"
-                    type="number"
-                    min={1}
-                    max={16}
-                    value={newChild.age}
-                    onChange={(e) => setNewChild(s => ({ ...s, age: Number(e.target.value || 0) }))}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="new-child-gender" className="block text-sm mb-1">Пол</label>
-                  <select
-                    id="new-child-gender"
-                    className="w-full p-2 border rounded bg-background text-foreground"
-                    value={newChild.gender}
-                    onChange={(e) => setNewChild(s => ({ ...s, gender: e.target.value as 'male' | 'female' }))}
+          <SectionCard
+            title="Добавить ребёнка"
+            description="Укажите имя, возраст и пол"
+            contentClassName="space-y-4"
+            footer={
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <div className="flex gap-2 sm:justify-end">
+                  <Button variant="outline" onClick={() => {
+                    setShowAddChild(false)
+                    setNewChild({ name: '', age: 6, gender: 'male' })
+                  }}>
+                    Отмена
+                  </Button>
+                  <Button 
+                    onClick={handleCreateChild}
+                    disabled={!newChild.name.trim() || newChild.age < 1 || newChild.age > 16}
                   >
-                    <option value="male">Мальчик</option>
-                    <option value="female">Девочка</option>
-                  </select>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Сохранить
+                  </Button>
                 </div>
               </div>
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setShowAddChild(false)}>Отмена</Button>
-                <Button onClick={handleCreateChild}>Сохранить</Button>
+            }
+          >
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="space-y-2">
+                <label htmlFor="new-child-name" className="text-sm font-medium">
+                  Имя <span className="text-destructive">*</span>
+                </label>
+                <Input
+                  id="new-child-name"
+                  value={newChild.name}
+                  onChange={(event) => setNewChild((state) => ({ ...state, name: event.target.value }))}
+                  placeholder="Например: Саша"
+                  required
+                  aria-describedby="new-child-name-hint"
+                />
+                <p id="new-child-name-hint" className="text-xs text-muted-foreground">
+                  Как зовут ребёнка
+                </p>
               </div>
-            </CardContent>
-          </Card>
+              <div className="space-y-2">
+                <label htmlFor="new-child-age" className="text-sm font-medium">
+                  Возраст
+                </label>
+                <Input
+                  id="new-child-age"
+                  type="number"
+                  min={1}
+                  max={16}
+                  value={newChild.age}
+                  onChange={(event) => setNewChild((state) => ({ ...state, age: Number(event.target.value || 0) }))}
+                  aria-describedby="new-child-age-hint"
+                />
+                <p id="new-child-age-hint" className="text-xs text-muted-foreground">
+                  От 1 до 16 лет
+                </p>
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="new-child-gender" className="text-sm font-medium">
+                  Пол
+                </label>
+                <select
+                  id="new-child-gender"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+                  value={newChild.gender}
+                  onChange={(event) => setNewChild((state) => ({ ...state, gender: event.target.value as 'male' | 'female' }))}
+                  aria-label="Выберите пол"
+                >
+                  <option value="male">👦 Мальчик</option>
+                  <option value="female">👧 Девочка</option>
+                </select>
+              </div>
+            </div>
+          </SectionCard>
         )}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <DashboardTabsList
-            items={dashboardTabs}
-            baseClassName="grid w-full"
-            columnsClassName="grid-cols-7"
-          />
+
+        {/* Error State для детей */}
+        {childrenError && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Ошибка загрузки</AlertTitle>
+            <AlertDescription className="flex items-center justify-between">
+              <span>{childrenError}</span>
+              <Button variant="outline" size="sm" onClick={loadChildren}>
+                Повторить
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <DashboardTabsGroup
+          value={activeTab}
+          onValueChange={setActiveTab}
+          items={dashboardTabs}
+          variant="secondary"
+          tabsWrapperClassName="w-full"
+        >
 
           <TabsContent value="overview" className="space-y-6">
             {/* Статистика */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
               {[{
                 icon: <Users className="h-8 w-8 text-blue-500" />, label: t('total_children'), value: children.length
               }, {
@@ -615,76 +692,83 @@ function TherapistDashboardContent() {
                   : '0%'
               }, {
                 icon: <Award className="h-8 w-8 text-amber-400" />, label: t('achievements'), value: achievementsCount
-              }].map(({ icon, label, value }, idx) => (
-                <Card key={idx} className="bg-muted/40 border border-border shadow-sm">
-                  <CardContent className="p-5">
-                    <div className="flex items-center gap-3">
-                      <div className="text-foreground/80" aria-hidden>{icon}</div>
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">{label}</p>
-                        <p className="text-2xl font-semibold text-foreground">{value}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+              }].map(({ icon, label, value }, index) => (
+                <DashboardStatCard
+                  key={label}
+                  icon={<div className="text-foreground/80" aria-hidden>{icon}</div>}
+                  label={label}
+                  value={value}
+                  className="h-full"
+                  contentClassName="p-5"
+                />
               ))}
             </div>
 
             {/* Недавние сессии */}
-            <Card>
-              <CardHeader>
-                <CardTitle>{t('recent_sessions')}</CardTitle>
-                <CardDescription>{t('sessions_history_sub')}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {sessionHistory.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12">
-                    <div className="rounded-full bg-muted p-4 mb-4">
-                      <Clock className="h-10 w-10 text-muted-foreground" />
-                    </div>
-                    <h3 className="text-lg font-semibold mb-2">Нет данных о сессиях</h3>
-                    <p className="text-sm text-muted-foreground mb-6 max-w-sm text-center">
-                      Выберите ребенка и начните сессию, чтобы увидеть статистику.
-                    </p>
-                    <Button onClick={() => setActiveTab('children')}>
-                      <Users className="mr-2 h-4 w-4" />
-                      Выбрать ребенка
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {sessionHistory.slice(-5).reverse().map((session, index) => {
-                      const child = children.find(c => c.id === session.childId)
-                      return (
-                        <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <span className="text-2xl">{child?.avatar}</span>
-                            <div>
-                              <p className="font-medium">{child?.name}</p>
-                              <p className="text-sm text-gray-600">
-                                {new Date(session.timestamp).toLocaleString()}
-                              </p>
-                            </div>
+            <SectionCard
+              title={t('recent_sessions')}
+              description={t('sessions_history_sub')}
+              contentClassName="space-y-4"
+            >
+              {sessionHistory.length === 0 ? (
+                <EmptyState
+                  icon={Clock}
+                  title="Нет данных о сессиях"
+                  description="Выберите ребенка и начните сессию, чтобы увидеть статистику."
+                  action={{
+                    label: "Выбрать ребенка",
+                    onClick: () => setActiveTab('children')
+                  }}
+                />
+              ) : (
+                <div className="space-y-3">
+                  {sessionHistory.slice(-5).reverse().map((session, index) => {
+                    const child = children.find((c) => c.id === session.childId)
+                    const accuracy = session.results.accuracy
+                    return (
+                      <div 
+                        key={index} 
+                        className="flex items-center justify-between rounded-lg border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-100 to-green-100 text-2xl dark:from-blue-900/30 dark:to-green-900/30">
+                            <span aria-hidden>{child?.avatar}</span>
                           </div>
-                          <div className="text-right">
-                            <Badge className={
-                              session.results.accuracy >= 80 ? 'bg-green-100 text-green-800' :
-                              session.results.accuracy >= 60 ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-red-100 text-red-800'
-                            }>
-                              {session.results.accuracy.toFixed(0)}%
-                            </Badge>
-                            <p className="text-sm text-gray-600 mt-1">
-                              {session.results.score} очков
+                          <div>
+                            <p className="font-medium text-foreground">{child?.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(session.timestamp).toLocaleString('ru-RU', {
+                                day: 'numeric',
+                                month: 'short',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
                             </p>
                           </div>
                         </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                        <div className="text-right">
+                          <Badge
+                            className={cn(
+                              "font-semibold",
+                              accuracy >= 80
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                : accuracy >= 60
+                                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                                  : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
+                            )}
+                          >
+                            {accuracy.toFixed(0)}%
+                          </Badge>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {session.results.score} {session.results.score === 1 ? 'очко' : session.results.score < 5 ? 'очка' : 'очков'}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </SectionCard>
           </TabsContent>
 
           <TabsContent value="comfy" className="space-y-6">
@@ -808,53 +892,91 @@ function TherapistDashboardContent() {
               </CardContent>
             </Card>
 
-            {filteredChildren.length === 0 ? (
-              <Card>
-                <CardContent className="py-12">
-                  <div className="flex flex-col items-center justify-center text-center">
-                    <div className="rounded-full bg-muted p-4 mb-4">
-                      <UserPlus className="h-10 w-10 text-muted-foreground" />
-                    </div>
-                    <h3 className="text-lg font-semibold mb-2">
-                      {searchQuery || ageFilter !== 'all' || genderFilter !== 'all' 
-                        ? 'Не найдено детей' 
-                        : 'Пока нет детей'}
-                    </h3>
-                    <p className="text-sm text-muted-foreground mb-6 max-w-sm">
-                      {searchQuery || ageFilter !== 'all' || genderFilter !== 'all'
-                        ? 'Попробуйте изменить параметры поиска или добавьте нового ребенка.'
-                        : 'Добавьте первого ребенка, чтобы начать работу с упражнениями.'}
-                    </p>
-                    <Button onClick={() => setShowAddChild(true)}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Добавить ребенка
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
+            {/* Loading State */}
+            {childrenLoading && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(6)].map((_, i) => (
+                  <Card key={i}>
+                    <CardContent className="p-6">
+                      <div className="flex items-center gap-4 mb-4">
+                        <Skeleton className="h-16 w-16 rounded-full" />
+                        <div className="flex-1 space-y-2">
+                          <Skeleton className="h-5 w-24" />
+                          <Skeleton className="h-4 w-16" />
+                        </div>
+                      </div>
+                      <div className="space-y-2 mb-4">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-2 w-full" />
+                      </div>
+                      <div className="flex gap-2">
+                        <Skeleton className="h-9 flex-1" />
+                        <Skeleton className="h-9 w-24" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!childrenLoading && filteredChildren.length === 0 && (
+              <EmptyState
+                icon={searchQuery || ageFilter !== 'all' || genderFilter !== 'all' ? Search : UserPlus}
+                title={searchQuery || ageFilter !== 'all' || genderFilter !== 'all' 
+                  ? 'Не найдено детей' 
+                  : 'Пока нет детей'}
+                description={searchQuery || ageFilter !== 'all' || genderFilter !== 'all'
+                  ? 'Попробуйте изменить параметры поиска или добавьте нового ребенка.'
+                  : 'Добавьте первого ребенка, чтобы начать работу с упражнениями.'}
+                action={{
+                  label: "Добавить ребенка",
+                  onClick: () => setShowAddChild(true)
+                }}
+              />
+            )}
+
+            {/* Children Grid */}
+            {!childrenLoading && filteredChildren.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredChildren.map((child) => {
                 const stats = getChildStats(child)
                 return (
-                  <Card key={child.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                  <Card 
+                    key={child.id} 
+                    className="group cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] hover:border-primary/50"
+                  >
                     <CardContent className="p-6">
                       <div className="flex items-center gap-4 mb-4">
-                        <span className="text-4xl" aria-hidden>{child.avatar}</span>
-                        <div>
+                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-100 to-green-100 text-4xl transition-transform group-hover:scale-110 dark:from-blue-900/30 dark:to-green-900/30">
+                          <span aria-hidden>{child.avatar}</span>
+                        </div>
+                        <div className="flex-1">
                           <h3 className="text-lg font-semibold text-foreground">{child.name}</h3>
-                          <p className="text-sm text-muted-foreground">{child.age} лет</p>
+                          <p className="text-sm text-muted-foreground">{child.age} {child.age === 1 ? 'год' : child.age < 5 ? 'года' : 'лет'}</p>
                         </div>
                       </div>
 
                       <div className="space-y-2 mb-4">
-                        <div className="flex justify-between text-sm text-muted-foreground">
-                          <span>Прогресс:</span>
-                          <span className="font-medium text-foreground">{child.overallProgress}%</span>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Прогресс:</span>
+                          <span className={cn(
+                            "font-semibold",
+                            child.overallProgress >= 80 ? "text-emerald-600 dark:text-emerald-400" :
+                            child.overallProgress >= 50 ? "text-blue-600 dark:text-blue-400" :
+                            "text-amber-600 dark:text-amber-400"
+                          )}>
+                            {child.overallProgress}%
+                          </span>
                         </div>
                         <div className="w-full bg-muted h-2 rounded-full overflow-hidden">
                           <div
-                            className="bg-primary h-2 rounded-full transition-all"
+                            className={cn(
+                              "h-2 rounded-full transition-all duration-500",
+                              child.overallProgress >= 80 ? "bg-gradient-to-r from-emerald-500 to-emerald-600" :
+                              child.overallProgress >= 50 ? "bg-gradient-to-r from-blue-500 to-blue-600" :
+                              "bg-gradient-to-r from-amber-500 to-amber-600"
+                            )}
                             style={{ width: `${child.overallProgress}%` }}
                           />
                         </div>
@@ -1152,7 +1274,7 @@ function TherapistDashboardContent() {
               </CardContent>
             </Card>
           </TabsContent>
-        </Tabs>
+        </DashboardTabsGroup>
       </div>
     </div>
   )

@@ -1,0 +1,2023 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Routing\\ResponseFactory\|Illuminate\\Http\\Response\:\:json\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Exceptions/Handler.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Http\\RedirectResponse\|Illuminate\\Routing\\Redirector\:\:guest\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Exceptions/Handler.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Exercise\:\:\$content\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Factories/ExerciseContentFactory.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Exercise\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Factories/ExerciseContentFactory.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\ContentBlock\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Factories/ExerciseContentFactory.php
+
+		-
+			message: '#^Method App\\Factories\\ExerciseContentFactory\:\:formatContentForBlock\(\) never returns null so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 1
+			path: app/Factories/ExerciseContentFactory.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ExerciseType\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Admin/ExerciseTypeController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ExerciseType\:\:\$key\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Controllers/Admin/ExerciseTypeController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Routing\\ResponseFactory\|Illuminate\\Http\\Response\:\:json\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Http/Controllers/Admin/ExerciseTypeController.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\ExerciseType\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/ExerciseTypeController.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\ExerciseType\:\:max\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/ExerciseTypeController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ExerciseType\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Admin/ExerciseTypeFieldController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ExerciseTypeField\:\:\$exercise_type_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Admin/ExerciseTypeFieldController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Routing\\ResponseFactory\|Illuminate\\Http\\Response\:\:json\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/ExerciseTypeFieldController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Routing\\ResponseFactory\|Illuminate\\Http\\Response\:\:noContent\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/ExerciseTypeFieldController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:max\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/ExerciseTypeFieldController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:whereKey\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Http/Controllers/Admin/ExerciseTypeFieldController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:whereNotIn\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/ExerciseTypeFieldController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$birth_date\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/AdaptiveExerciseController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 5
+			path: app/Http/Controllers/Api/AdaptiveExerciseController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Routing\\ResponseFactory\|Illuminate\\Http\\Response\:\:json\(\)\.$#'
+			identifier: method.notFound
+			count: 6
+			path: app/Http/Controllers/Api/AdaptiveExerciseController.php
+
+		-
+			message: '#^Call to method groupBy\(\) on an unknown class App\\Http\\Controllers\\Api\\Collection\.$#'
+			identifier: class.notFound
+			count: 2
+			path: app/Http/Controllers/Api/AdaptiveExerciseController.php
+
+		-
+			message: '#^Call to method map\(\) on an unknown class App\\Http\\Controllers\\Api\\Collection\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Http/Controllers/Api/AdaptiveExerciseController.php
+
+		-
+			message: '#^Call to method sum\(\) on an unknown class App\\Http\\Controllers\\Api\\Collection\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Http/Controllers/Api/AdaptiveExerciseController.php
+
+		-
+			message: '#^Call to private method assessSkillLevels\(\) of class App\\Services\\AdaptiveExerciseService\.$#'
+			identifier: method.private
+			count: 3
+			path: app/Http/Controllers/Api/AdaptiveExerciseController.php
+
+		-
+			message: '#^Call to private method getChildPreferences\(\) of class App\\Services\\AdaptiveExerciseService\.$#'
+			identifier: method.private
+			count: 1
+			path: app/Http/Controllers/Api/AdaptiveExerciseController.php
+
+		-
+			message: '#^Parameter \#1 \$exercises of method App\\Http\\Controllers\\Api\\AdaptiveExerciseController\:\:analyzeSkillCoverage\(\) expects App\\Http\\Controllers\\Api\\Collection, Illuminate\\Support\\Collection given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/AdaptiveExerciseController.php
+
+		-
+			message: '#^Parameter \#2 \$exercises of method App\\Http\\Controllers\\Api\\AdaptiveExerciseController\:\:getRecommendationReasoning\(\) expects App\\Http\\Controllers\\Api\\Collection, Illuminate\\Support\\Collection given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/AdaptiveExerciseController.php
+
+		-
+			message: '#^Parameter \$exercises of method App\\Http\\Controllers\\Api\\AdaptiveExerciseController\:\:analyzeSkillCoverage\(\) has invalid type App\\Http\\Controllers\\Api\\Collection\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Http/Controllers/Api/AdaptiveExerciseController.php
+
+		-
+			message: '#^Parameter \$exercises of method App\\Http\\Controllers\\Api\\AdaptiveExerciseController\:\:getRecommendationReasoning\(\) has invalid type App\\Http\\Controllers\\Api\\Collection\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Http/Controllers/Api/AdaptiveExerciseController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Assignment\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Api/AssignmentController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Assignment\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Api/AssignmentController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Routing\\ResponseFactory\|Illuminate\\Http\\Response\:\:json\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Http/Controllers/Api/AssignmentController.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\Assignment\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Http/Controllers/Api/AssignmentController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Auth\\Guard\:\:logout\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Api/AuthController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Routing\\ResponseFactory\|Illuminate\\Http\\Response\:\:json\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: app/Http/Controllers/Api/AuthController.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\User\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Http/Controllers/Api/AuthController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Routing\\ResponseFactory\|Illuminate\\Http\\Response\:\:json\(\)\.$#'
+			identifier: method.notFound
+			count: 5
+			path: app/Http/Controllers/Api/ChildController.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\Child\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ChildController.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\Child\:\:where\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ChildController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Exercise\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ChildProgressController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Routing\\ResponseFactory\|Illuminate\\Http\\Response\:\:json\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: app/Http/Controllers/Api/ChildProgressController.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\ChildProgress\:\:updateOrCreate\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ChildProgressController.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\ChildProgress\:\:where\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ChildProgressController.php
+
+		-
+			message: '#^Call to static method raw\(\) on an unknown class DB\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ChildProgressController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ComfyPreset\:\:\$defaults\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ComfyGenerationController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ComfyPreset\:\:\$enabled\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ComfyGenerationController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ComfyPreset\:\:\$graph\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ComfyGenerationController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ComfyPreset\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ComfyGenerationController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Routing\\ResponseFactory\|Illuminate\\Http\\Response\:\:json\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: app/Http/Controllers/Api/ComfyGenerationController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Routing\\ResponseFactory\|Illuminate\\Http\\Response\:\:json\(\)\.$#'
+			identifier: method.notFound
+			count: 10
+			path: app/Http/Controllers/Api/ComfyPresetController.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\ComfyPreset\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ComfyPresetController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ContentBlock\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ContentBlockController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Contracts\\Auth\\Authenticatable\:\:\$role\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ContentBlockController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Contracts\\Auth\\Authenticatable\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ContentBlockController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Auth\\Factory\|Illuminate\\Contracts\\Auth\\Guard\:\:user\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ContentBlockController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Routing\\ResponseFactory\|Illuminate\\Http\\Response\:\:json\(\)\.$#'
+			identifier: method.notFound
+			count: 23
+			path: app/Http/Controllers/Api/ContentBlockController.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\ContentBlock\:\:find\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ContentBlockController.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\ContentBlock\:\:findOrFail\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ContentBlockController.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\ContentBlock\:\:where\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ContentBlockController.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\Exercise\:\:find\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ContentBlockController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Exercise\:\:\$custom_params\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ExerciseController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Exercise\:\:\$exerciseType\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Api/ExerciseController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Exercise\:\:\$instructions\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ExerciseController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Exercise\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ExerciseController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ExerciseType\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Api/ExerciseController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ExerciseType\:\:\$key\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Api/ExerciseController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Auth\\Factory\|Illuminate\\Contracts\\Auth\\Guard\:\:user\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Http/Controllers/Api/ExerciseController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Routing\\ResponseFactory\|Illuminate\\Http\\Response\:\:json\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ExerciseController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\BelongsTo\:\:exists\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ExerciseController.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\ContentBlock\:\:find\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ExerciseController.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\Exercise\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ExerciseController.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\ExerciseType\:\:find\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ExerciseController.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\ExerciseType\:\:where\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ExerciseController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Api\\ExerciseController\:\:formatBlocksPayload\(\) should return array\<int, array\{order\: int, delay\: int, settings\: array\}\> but returns array\<array\{order\: int, delay\: int, settings\: non\-empty\-string\|false\|null\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/Api/ExerciseController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Routing\\ResponseFactory\|Illuminate\\Http\\Response\:\:json\(\)\.$#'
+			identifier: method.notFound
+			count: 6
+			path: app/Http/Controllers/Api/ExerciseGeneratorController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Routing\\ResponseFactory\|Illuminate\\Http\\Response\:\:json\(\)\.$#'
+			identifier: method.notFound
+			count: 5
+			path: app/Http/Controllers/Api/ExerciseSessionController.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\ExerciseSession\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ExerciseSessionController.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\ExerciseSession\:\:where\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 2
+			path: app/Http/Controllers/Api/ExerciseSessionController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ExerciseTemplate\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Api/ExerciseTemplateController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Routing\\ResponseFactory\|Illuminate\\Http\\Response\:\:json\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ExerciseTemplateController.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\ExerciseTemplate\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Http/Controllers/Api/ExerciseTemplateController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Routing\\ResponseFactory\|Illuminate\\Http\\Response\:\:json\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: app/Http/Controllers/Api/ExerciseTypesController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Routing\\ResponseFactory\|Illuminate\\Http\\Response\:\:json\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: app/Http/Controllers/Api/GraphicDictationController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Routing\\ResponseFactory\|Illuminate\\Http\\Response\:\:json\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Api/HealthController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Routing\\ResponseFactory\|Illuminate\\Http\\Response\:\:json\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Http/Controllers/Api/IntegrationController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Worksheet\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/WorksheetController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Worksheet\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/WorksheetController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\WorksheetItem\:\:\$can_regenerate\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Controllers/Api/WorksheetController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\WorksheetItem\:\:\$content_snapshot\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Api/WorksheetController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\WorksheetItem\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Api/WorksheetController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\WorksheetItem\:\:\$instructions\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Controllers/Api/WorksheetController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\WorksheetItem\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Controllers/Api/WorksheetController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\WorksheetItem\:\:\$worksheet_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/WorksheetController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Contracts\\Auth\\Authenticatable\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/WorksheetController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/WorksheetController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Auth\\Factory\|Illuminate\\Contracts\\Auth\\Guard\:\:user\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Http/Controllers/Api/WorksheetController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Routing\\ResponseFactory\|Illuminate\\Http\\Response\:\:json\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: app/Http/Controllers/Api/WorksheetController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:whereKey\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Api/WorksheetController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:whereNotIn\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Api/WorksheetController.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\Worksheet\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Http/Controllers/Api/WorksheetController.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\WorksheetItemRegeneration\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Http/Controllers/Api/WorksheetController.php
+
+		-
+			message: '#^Parameter \#1 \$string of function strtoupper expects string, array\|string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/WorksheetController.php
+
+		-
+			message: '#^Parameter \#2 \$default of method Illuminate\\Http\\Request\:\:query\(\) expects array\|string\|null, int given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/WorksheetController.php
+
+		-
+			message: '#^Part \$search \(non\-empty\-array\|non\-falsy\-string\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 2
+			path: app/Http/Controllers/Api/WorksheetController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\WorksheetLayout\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Controllers/Api/WorksheetLayoutController.php
+
+		-
+			message: '#^Anonymous function has an unused use \$tenantId\.$#'
+			identifier: closure.unusedUse
+			count: 1
+			path: app/Http/Controllers/Api/WorksheetLayoutController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Auth\\Factory\|Illuminate\\Contracts\\Auth\\Guard\:\:user\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Api/WorksheetLayoutController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Routing\\ResponseFactory\|Illuminate\\Http\\Response\:\:json\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Api/WorksheetLayoutController.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\WorksheetLayout\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Http/Controllers/Api/WorksheetLayoutController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\WorksheetPreset\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Controllers/Api/WorksheetPresetController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Contracts\\Auth\\Authenticatable\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/WorksheetPresetController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Auth\\Factory\|Illuminate\\Contracts\\Auth\\Guard\:\:user\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Api/WorksheetPresetController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Routing\\ResponseFactory\|Illuminate\\Http\\Response\:\:json\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Api/WorksheetPresetController.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\WorksheetPreset\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Http/Controllers/Api/WorksheetPresetController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Routing\\ResponseFactory\|Illuminate\\Http\\Response\:\:json\(\)\.$#'
+			identifier: method.notFound
+			count: 5
+			path: app/Http/Controllers/SvgController.php
+
+		-
+			message: '#^Cannot cast array\|string\|null to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: app/Http/Middleware/RequestLoggingMiddleware.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Routing\\ResponseFactory\|Illuminate\\Http\\Response\:\:json\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Http/Middleware/RoleMiddleware.php
+
+		-
+			message: '#^Cannot access property \$id on object\|string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Http/Requests/Admin/ReorderExerciseTypeFieldsRequest.php
+
+		-
+			message: '#^Cannot access property \$id on object\|string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Http/Requests/Admin/StoreExerciseTypeFieldRequest.php
+
+		-
+			message: '#^Cannot access property \$id on object\|string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Http/Requests/Admin/UpdateExerciseTypeFieldRequest.php
+
+		-
+			message: '#^Cannot access property \$id on object\|string\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Http/Requests/Admin/UpdateExerciseTypeRequest.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Admin\\V1\\ExerciseTypeFieldResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Admin/V1/ExerciseTypeFieldResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Admin\\V1\\ExerciseTypeFieldResource\:\:\$default_value\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Admin/V1/ExerciseTypeFieldResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Admin\\V1\\ExerciseTypeFieldResource\:\:\$display_order\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Admin/V1/ExerciseTypeFieldResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Admin\\V1\\ExerciseTypeFieldResource\:\:\$exercise_type_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Admin/V1/ExerciseTypeFieldResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Admin\\V1\\ExerciseTypeFieldResource\:\:\$field_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Admin/V1/ExerciseTypeFieldResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Admin\\V1\\ExerciseTypeFieldResource\:\:\$help_text\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Admin/V1/ExerciseTypeFieldResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Admin\\V1\\ExerciseTypeFieldResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Admin/V1/ExerciseTypeFieldResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Admin\\V1\\ExerciseTypeFieldResource\:\:\$is_required\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Admin/V1/ExerciseTypeFieldResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Admin\\V1\\ExerciseTypeFieldResource\:\:\$key\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Admin/V1/ExerciseTypeFieldResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Admin\\V1\\ExerciseTypeFieldResource\:\:\$label\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Admin/V1/ExerciseTypeFieldResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Admin\\V1\\ExerciseTypeFieldResource\:\:\$max_value\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Admin/V1/ExerciseTypeFieldResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Admin\\V1\\ExerciseTypeFieldResource\:\:\$min_value\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Admin/V1/ExerciseTypeFieldResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Admin\\V1\\ExerciseTypeFieldResource\:\:\$options\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Admin/V1/ExerciseTypeFieldResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Admin\\V1\\ExerciseTypeFieldResource\:\:\$step\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Admin/V1/ExerciseTypeFieldResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Admin\\V1\\ExerciseTypeFieldResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Admin/V1/ExerciseTypeFieldResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Admin\\V1\\ExerciseTypeResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Admin/V1/ExerciseTypeResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Admin\\V1\\ExerciseTypeResource\:\:\$description\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Admin/V1/ExerciseTypeResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Admin\\V1\\ExerciseTypeResource\:\:\$display_order\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Admin/V1/ExerciseTypeResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Admin\\V1\\ExerciseTypeResource\:\:\$domain\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Admin/V1/ExerciseTypeResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Admin\\V1\\ExerciseTypeResource\:\:\$exercises_count\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Admin/V1/ExerciseTypeResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Admin\\V1\\ExerciseTypeResource\:\:\$fields_count\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Admin/V1/ExerciseTypeResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Admin\\V1\\ExerciseTypeResource\:\:\$icon\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Admin/V1/ExerciseTypeResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Admin\\V1\\ExerciseTypeResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Admin/V1/ExerciseTypeResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Admin\\V1\\ExerciseTypeResource\:\:\$is_active\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Admin/V1/ExerciseTypeResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Admin\\V1\\ExerciseTypeResource\:\:\$key\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Admin/V1/ExerciseTypeResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Admin\\V1\\ExerciseTypeResource\:\:\$meta\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Admin/V1/ExerciseTypeResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Admin\\V1\\ExerciseTypeResource\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Admin/V1/ExerciseTypeResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Admin\\V1\\ExerciseTypeResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Admin/V1/ExerciseTypeResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\AssignmentResource\:\:\$child_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/AssignmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\AssignmentResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/AssignmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\AssignmentResource\:\:\$created_by\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/AssignmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\AssignmentResource\:\:\$due_date\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/AssignmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\AssignmentResource\:\:\$exercise_template_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/AssignmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\AssignmentResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/AssignmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\AssignmentResource\:\:\$meta\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/AssignmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\AssignmentResource\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/AssignmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\AssignmentResource\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/AssignmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\AssignmentResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/AssignmentResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ChildResource\:\:\$age\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ChildResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ChildResource\:\:\$avatar\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ChildResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ChildResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ChildResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ChildResource\:\:\$gender\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ChildResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ChildResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ChildResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ChildResource\:\:\$last_session_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ChildResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ChildResource\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ChildResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ChildResource\:\:\$overall_progress\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ChildResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ChildResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ChildResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ExerciseResource\:\:\$content\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ExerciseResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ExerciseResource\:\:\$contentBlocks\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ExerciseResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ExerciseResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ExerciseResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ExerciseResource\:\:\$created_by\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ExerciseResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ExerciseResource\:\:\$description\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ExerciseResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ExerciseResource\:\:\$difficulty\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ExerciseResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ExerciseResource\:\:\$estimated_duration\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ExerciseResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ExerciseResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ExerciseResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ExerciseResource\:\:\$is_active\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ExerciseResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ExerciseResource\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ExerciseResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ExerciseResource\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ExerciseResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ExerciseResource\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ExerciseResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ExerciseResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ExerciseResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ExerciseTemplateResource\:\:\$content\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ExerciseTemplateResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ExerciseTemplateResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ExerciseTemplateResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ExerciseTemplateResource\:\:\$created_by\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ExerciseTemplateResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ExerciseTemplateResource\:\:\$description\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ExerciseTemplateResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ExerciseTemplateResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ExerciseTemplateResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ExerciseTemplateResource\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ExerciseTemplateResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ExerciseTemplateResource\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ExerciseTemplateResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ExerciseTemplateResource\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ExerciseTemplateResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\ExerciseTemplateResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/ExerciseTemplateResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetItemResource\:\:\$can_regenerate\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetItemResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetItemResource\:\:\$content_snapshot\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetItemResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetItemResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetItemResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetItemResource\:\:\$exercise_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetItemResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetItemResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetItemResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetItemResource\:\:\$last_regenerated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetItemResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetItemResource\:\:\$position\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetItemResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetItemResource\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetItemResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetItemResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetItemResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetLayoutResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetLayoutResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetLayoutResource\:\:\$created_by\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetLayoutResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetLayoutResource\:\:\$footer_html\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetLayoutResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetLayoutResource\:\:\$header_html\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetLayoutResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetLayoutResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetLayoutResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetLayoutResource\:\:\$is_default\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetLayoutResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetLayoutResource\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetLayoutResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetLayoutResource\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetLayoutResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetLayoutResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetLayoutResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetPresetResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetPresetResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetPresetResource\:\:\$created_by\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetPresetResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetPresetResource\:\:\$fields\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetPresetResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetPresetResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetPresetResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetPresetResource\:\:\$is_default\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetPresetResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetPresetResource\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetPresetResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetPresetResource\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetPresetResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetPresetResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetPresetResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetResource\:\:\$child_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetResource\:\:\$copies\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetResource\:\:\$created_by\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetResource\:\:\$footer_html\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetResource\:\:\$generated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetResource\:\:\$header_html\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetResource\:\:\$notes\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetResource\:\:\$pdf_path\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetResource\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetResource\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetResource\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\V1\\WorksheetResource\:\:\$worksheet_layout_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/V1/WorksheetResource.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\Assignment\:\:find\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Jobs/GenerateAssignmentIllustrationJob.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ContentBlock\:\:\$content\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Models/ContentBlock.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ContentBlock\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/ContentBlock.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\:\:orderBy\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Models/ContentBlock.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\:\:orderByDesc\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Models/ContentBlock.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ContentBlock\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/Exercise.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$display_content\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/Exercise.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/Exercise.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$pivot\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Models/Exercise.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/Exercise.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/Exercise.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\:\:count\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Models/Exercise.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\:\:max\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Models/Exercise.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\:\:orderBy\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Models/Exercise.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Models/Exercise.php
+
+		-
+			message: '#^Result of method Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\:\:attach\(\) \(void\) is used\.$#'
+			identifier: method.void
+			count: 1
+			path: app/Models/Exercise.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ExerciseSession\:\:\$session_code\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/ExerciseSession.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\ExerciseSession\:\:where\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Models/ExerciseSession.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:orderBy\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Models/Worksheet.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Assignment\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Policies/AssignmentPolicy.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$role\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Policies/AssignmentPolicy.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 5
+			path: app/Policies/AssignmentPolicy.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Child\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Policies/ChildPolicy.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$role\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Policies/ChildPolicy.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 5
+			path: app/Policies/ChildPolicy.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ContentBlock\:\:\$created_by\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Policies/ContentBlockPolicy.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ContentBlock\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Policies/ContentBlockPolicy.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Policies/ContentBlockPolicy.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$role\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Policies/ContentBlockPolicy.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 6
+			path: app/Policies/ContentBlockPolicy.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ExerciseTemplate\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Policies/ExerciseTemplatePolicy.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$role\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Policies/ExerciseTemplatePolicy.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Policies/ExerciseTemplatePolicy.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$birth_date\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/AdaptiveExerciseService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/AdaptiveExerciseService.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\ChildProgress\:\:where\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 2
+			path: app/Services/AdaptiveExerciseService.php
+
+		-
+			message: '#^Method App\\Services\\AdaptiveExerciseService\:\:selectNextExerciseType\(\) should return string but returns Illuminate\\Support\\Collection\<int, \(int\|string\)\>\|int\|string\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/AdaptiveExerciseService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ContentBlock\:\:\$content\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/ContentBlockService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ContentBlock\:\:\$created_by\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ContentBlockService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ContentBlock\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ContentBlockService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ContentBlock\:\:\$metadata\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/ContentBlockService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ContentBlock\:\:\$settings\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/ContentBlockService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ContentBlock\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ContentBlockService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ContentBlock\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/ContentBlockService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ContentBlock\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 7
+			path: app/Services/ContentBlockService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Exercise\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/ContentBlockService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 5
+			path: app/Services/ContentBlockService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$tenant_id\.$#'
+			identifier: property.notFound
+			count: 5
+			path: app/Services/ContentBlockService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\:\:byType\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/ContentBlockService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\:\:count\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/ContentBlockService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\:\:exists\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/ContentBlockService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany\:\:latest\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/ContentBlockService.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\ContentBlock\:\:byType\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Services/ContentBlockService.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\ContentBlock\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 3
+			path: app/Services/ContentBlockService.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\ContentBlock\:\:templates\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Services/ContentBlockService.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\ContentBlock\:\:whereIn\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Services/ContentBlockService.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\ContentBlock\:\:withCount\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Services/ContentBlockService.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\Exercise\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Services/ContentBlockService.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\Exercise\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Services/ExerciseGeneratorService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\GeneratorJobShard\:\:\$job_id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/Generator/GeneratorJobService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\BelongsTo\:\:lockForUpdate\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Services/Generator/GeneratorJobService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:orderBy\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/Generator/GeneratorJobService.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\GeneratorJob\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Services/Generator/GeneratorJobService.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\GeneratorJobShard\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Services/Generator/GeneratorJobService.php
+
+		-
+			message: '#^Method App\\Services\\Generator\\GeneratorJobService\:\:findJobForContext\(\) should return App\\Models\\GeneratorJob\|null but returns array\<Illuminate\\Database\\Eloquent\\Builder\>\|Illuminate\\Database\\Eloquent\\Builder\|Illuminate\\Database\\Eloquent\\Collection\|Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Generator/GeneratorJobService.php
+
+		-
+			message: '#^Method App\\Services\\Generator\\GeneratorJobService\:\:getShard\(\) should return App\\Models\\GeneratorJobShard\|null but returns object\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Generator/GeneratorJobService.php
+
+		-
+			message: '#^Parameter \#1 \$job of method App\\Services\\Generator\\GeneratorJobService\:\:aggregateJobResult\(\) expects App\\Models\\GeneratorJob, array\<Illuminate\\Database\\Eloquent\\Builder\>\|Illuminate\\Database\\Eloquent\\Builder\|Illuminate\\Database\\Eloquent\\Collection\|Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Generator/GeneratorJobService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Filesystem\\Filesystem\:\:url\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/WorksheetPdfService.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\Exercise\:\:whereIn\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Services/WorksheetPdfService.php
+
+		-
+			message: '#^Parameter \#1 \$title of static method Illuminate\\Support\\Str\:\:slug\(\) expects string, array\|string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: database/factories/ExerciseTypeFactory.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\ExerciseType\:\:updateOrCreate\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: database/seeders/ExerciseTypesSeeder.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\ExerciseTypeField\:\:updateOrCreate\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: database/seeders/ExerciseTypesSeeder.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\Tenant\:\:firstOrCreate\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: database/seeders/TenantDemoSeeder.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\User\:\:updateOrCreate\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: database/seeders/TenantDemoSeeder.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Routing\\ResponseFactory\|Illuminate\\Http\\Response\:\:json\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: routes/web.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\|Illuminate\\Database\\Eloquent\\Model\:\:\$exerciseType\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Feature/AdminExerciseTypeControllerTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\|Illuminate\\Database\\Eloquent\\Model\:\:\$exercise_type_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Feature/AdminExerciseTypeControllerTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\|Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 23
+			path: tests/Feature/AdminExerciseTypeControllerTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\|Illuminate\\Database\\Eloquent\\Model\:\:\$key\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Feature/AdminExerciseTypeControllerTest.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Factories\\Factory\<App\\Models\\User\>\:\:admin\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/AdminExerciseTypeControllerTest.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\ExerciseTypeField\:\:where\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 2
+			path: tests/Feature/AdminExerciseTypeControllerTest.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\Assignment\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 2
+			path: tests/Feature/AssignmentIllustrationTest.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\ExerciseTemplate\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 2
+			path: tests/Feature/AssignmentIllustrationTest.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\User\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 3
+			path: tests/Feature/AssignmentIllustrationTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ExerciseTemplate\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 7
+			path: tests/Feature/AssignmentTest.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\Assignment\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 4
+			path: tests/Feature/AssignmentTest.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\ExerciseTemplate\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: tests/Feature/AssignmentTest.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\User\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 6
+			path: tests/Feature/AssignmentTest.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\User\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: tests/Feature/AuthTest.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\User\:\:where\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: tests/Feature/AuthTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ContentBlock\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: tests/Feature/ContentBlockPolicyTest.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\ContentBlock\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: tests/Feature/ContentBlockPolicyTest.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\User\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 4
+			path: tests/Feature/ContentBlockPolicyTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\|Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 34
+			path: tests/Feature/ExerciseControllerTest.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\|Illuminate\\Database\\Eloquent\\Model\:\:contentBlocks\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Feature/ExerciseControllerTest.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\ContentBlock\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 4
+			path: tests/Feature/ExerciseControllerTest.php
+
+		-
+			message: '#^Parameter \#1 \$user of static method Laravel\\Sanctum\\Sanctum\:\:actingAs\(\) expects Illuminate\\Contracts\\Auth\\Authenticatable\|Laravel\\Sanctum\\HasApiTokens, Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\|Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 5
+			path: tests/Feature/ExerciseControllerTest.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\ExerciseTemplate\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 5
+			path: tests/Feature/ExerciseTemplateTest.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\User\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 6
+			path: tests/Feature/ExerciseTemplateTest.php
+
+		-
+			message: '#^Parameter \#1 \$user of static method Laravel\\Sanctum\\Sanctum\:\:actingAs\(\) expects Illuminate\\Contracts\\Auth\\Authenticatable\|Laravel\\Sanctum\\HasApiTokens, Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\|Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 2
+			path: tests/Feature/IntegrationTest.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\User\:\:create\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: tests/Feature/WorksheetAsyncTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\|Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 28
+			path: tests/Feature/WorksheetControllerTest.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\|Illuminate\\Database\\Eloquent\\Model\:\:items\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: tests/Feature/WorksheetControllerTest.php
+
+		-
+			message: '#^Parameter \#1 \$user of static method Laravel\\Sanctum\\Sanctum\:\:actingAs\(\) expects Illuminate\\Contracts\\Auth\\Authenticatable\|Laravel\\Sanctum\\HasApiTokens, Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\>\|Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 6
+			path: tests/Feature/WorksheetControllerTest.php
+
+		-
+			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertIsArray\(\) with array will always evaluate to true\.$#'
+			identifier: method.alreadyNarrowedType
+			count: 1
+			path: tests/Unit/Services/GraphicDictationServiceTest.php

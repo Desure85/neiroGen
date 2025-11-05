@@ -1153,237 +1153,68 @@ export default function ExerciseTypeDetailPage() {
                   Пока нет полей. Добавьте первое поле через форму выше.
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table
-                    className="w-full min-w-[720px] table-fixed border-collapse"
-                    data-testid="exercise-type-fields-table"
-                  >
-                    <thead>
-                      <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
-                        <th className="px-3 py-2">#</th>
-                        <th className="px-3 py-2">Ключ</th>
-                        <th className="px-3 py-2">Заголовок</th>
-                        <th className="px-3 py-2">Тип</th>
-                        <th className="px-3 py-2">Обязательное</th>
-                        <th className="px-3 py-2">Default</th>
-                        <th className="px-3 py-2">Опции</th>
-                        <th className="px-3 py-2 text-right">Действия</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-sm">
-                      {fieldsSorted.map((field, index) => {
-                        const isEditing = editingFieldId === field.id
-                        const form = isEditing ? editingFieldForm : null
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragStart={handleDragStart}
+                  onDragCancel={handleDragCancel}
+                  onDragEnd={handleDragEnd}
+                >
+                  <div className="overflow-x-auto">
+                    <table
+                      className="w-full min-w-[720px] table-fixed border-collapse"
+                      data-testid="exercise-type-fields-table"
+                    >
+                      <thead>
+                        <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+                          <th className="px-3 py-2">#</th>
+                          <th className="px-3 py-2">Ключ</th>
+                          <th className="px-3 py-2">Заголовок</th>
+                          <th className="px-3 py-2">Тип</th>
+                          <th className="px-3 py-2">Обязательное</th>
+                          <th className="px-3 py-2">Default</th>
+                          <th className="px-3 py-2">Опции</th>
+                          <th className="px-3 py-2 text-right">Действия</th>
+                        </tr>
+                      </thead>
+                      <SortableContext items={fieldsSorted.map((field) => field.id)} strategy={verticalListSortingStrategy}>
+                        <tbody className="text-sm">
+                          {fieldsSorted.map((field, index) => {
+                            const isEditing = editingFieldId === field.id
+                            const form = isEditing ? editingFieldForm : null
+                            const canMoveUp = index > 0
+                            const canMoveDown = index < fieldsSorted.length - 1
 
-                        return (
-                          <tr key={field.id} className="border-b border-border/60 last:border-b-0 align-top">
-                            <td className="px-3 py-3 text-muted-foreground">{index + 1}</td>
-                            <td className="px-3 py-3 font-mono text-xs text-muted-foreground">
-                              {isEditing && form ? (
-                                <Input
-                                  value={form.key}
-                                  onChange={(event) => handleFieldEditChange("key", event.target.value)}
-                                  className="h-8"
-                                />
-                              ) : (
-                                field.key
-                              )}
-                            </td>
-                            <td className="px-3 py-3">
-                              {isEditing && form ? (
-                                <div className="space-y-2">
-                                  <Input
-                                    value={form.label}
-                                    onChange={(event) => handleFieldEditChange("label", event.target.value)}
-                                    className="h-8"
-                                  />
-                                  <Textarea
-                                    value={form.help_text}
-                                    onChange={(event) => handleFieldEditChange("help_text", event.target.value)}
-                                    rows={2}
-                                    placeholder="Help text"
-                                  />
-                                </div>
-                              ) : (
-                                <div className="space-y-1">
-                                  <div className="text-foreground">{field.label}</div>
-                                  {field.help_text ? (
-                                    <div className="text-xs text-muted-foreground">{field.help_text}</div>
-                                  ) : null}
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-3 py-3 text-muted-foreground">
-                              {isEditing && form ? (
-                                <select
-                                  className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
-                                  value={form.field_type}
-                                  onChange={(event) => handleFieldEditChange("field_type", event.target.value)}
-                                >
-                                  {FIELD_TYPE_OPTIONS.map((option) => (
-                                    <option key={option} value={option}>
-                                      {option}
-                                    </option>
-                                  ))}
-                                </select>
-                              ) : (
-                                field.field_type
-                              )}
-                            </td>
-                            <td className="px-3 py-3 text-muted-foreground">
-                              {isEditing && form ? (
-                                <label className="flex items-center gap-2 text-xs">
-                                  <input type="checkbox" checked={form.is_required} onChange={handleToggleRequired} />
-                                  Обязательно
-                                </label>
-                              ) : field.is_required ? (
-                                "Да"
-                              ) : (
-                                "Нет"
-                              )}
-                            </td>
-                            <td className="px-3 py-3 text-muted-foreground">
-                              {isEditing && form ? (
-                                <div className="space-y-2">
-                                  <Input
-                                    value={form.default_value}
-                                    onChange={(event) => handleFieldEditChange("default_value", event.target.value)}
-                                    placeholder='"text" или {"count":2}'
-                                    className="h-8"
-                                  />
-                                  <div className="grid gap-2 sm:grid-cols-3">
-                                    <Input
-                                      value={form.min_value}
-                                      onChange={(event) => handleFieldEditChange("min_value", event.target.value)}
-                                      placeholder="min"
-                                      className="h-8"
-                                    />
-                                    <Input
-                                      value={form.max_value}
-                                      onChange={(event) => handleFieldEditChange("max_value", event.target.value)}
-                                      placeholder="max"
-                                      className="h-8"
-                                    />
-                                    <Input
-                                      value={form.step}
-                                      onChange={(event) => handleFieldEditChange("step", event.target.value)}
-                                      placeholder="step"
-                                      className="h-8"
-                                    />
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="space-y-1">
-                                  <div>{formatFieldDefault(field.default_value)}</div>
-                                  {(field.min_value !== null || field.max_value !== null || field.step !== null) && (
-                                    <div className="text-xs text-muted-foreground">
-                                      {field.min_value !== null && field.min_value !== undefined
-                                        ? `мин: ${field.min_value}`
-                                        : null}
-                                      {field.max_value !== null && field.max_value !== undefined
-                                        ? `${field.min_value !== null && field.min_value !== undefined ? ", " : ""}макс: ${field.max_value}`
-                                        : null}
-                                      {field.step !== null && field.step !== undefined
-                                        ? `${
-                                            field.min_value !== null || field.max_value !== null ? ", " : ""
-                                          }шаг: ${field.step}`
-                                        : null}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-3 py-3 text-muted-foreground">
-                              {isEditing && form ? (
-                                <Textarea
-                                  value={form.options}
-                                  onChange={(event) => handleFieldEditChange("options", event.target.value)}
-                                  rows={2}
-                                  placeholder='["var1", "var2"]'
-                                />
-                              ) : formatFieldOptions(field.options)}
-                            </td>
-                            <td className="px-3 py-3">
-                              <div className="flex flex-wrap items-center justify-end gap-1">
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  disabled={index === 0 || reordering}
-                                  onClick={() => handleReorder(field.id, "up")}
-                                  title="Выше"
-                                >
-                                  <ChevronUp className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  disabled={index === fieldsSorted.length - 1 || reordering}
-                                  onClick={() => handleReorder(field.id, "down")}
-                                  title="Ниже"
-                                >
-                                  <ChevronDown className="h-4 w-4" />
-                                </Button>
-
-                                {isEditing ? (
-                                  <>
-                                    <Button
-                                      type="button"
-                                      size="icon"
-                                      variant="secondary"
-                                      disabled={savingFieldId === field.id}
-                                      onClick={() => handleSaveField(field.id)}
-                                      title="Сохранить"
-                                    >
-                                      {savingFieldId === field.id ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                      ) : (
-                                        <Save className="h-4 w-4" />
-                                      )}
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      size="icon"
-                                      variant="ghost"
-                                      onClick={cancelFieldEdit}
-                                      title="Отмена"
-                                    >
-                                      <X className="h-4 w-4" />
-                                    </Button>
-                                  </>
-                                ) : (
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => openFieldEditor(field.id)}
-                                    title="Редактировать"
-                                  >
-                                    <Pencil className="h-4 w-4" />
-                                  </Button>
-                                )}
-
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleDeleteField(field.id)}
-                                  title="Удалить"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                              {isEditing && fieldEditError ? (
-                                <div className="mt-2 text-xs text-destructive">{fieldEditError}</div>
-                              ) : null}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                            return (
+                              <SortableFieldRow
+                                key={field.id}
+                                field={field}
+                                index={index}
+                                isEditing={isEditing}
+                                form={form}
+                                reordering={reordering}
+                                savingFieldId={savingFieldId}
+                                fieldEditError={fieldEditError}
+                                canMoveUp={canMoveUp}
+                                canMoveDown={canMoveDown}
+                                onEditChange={handleFieldEditChange}
+                                onToggleRequired={handleToggleRequired}
+                                onReorder={handleReorder}
+                                onSave={handleSaveField}
+                                onCancel={cancelFieldEdit}
+                                onDelete={handleDeleteField}
+                                onEdit={openFieldEditor}
+                              />
+                            )
+                          })}
+                        </tbody>
+                      </SortableContext>
+                    </table>
+                  </div>
+                  <DragOverlay>
+                    <DragOverlayCard field={activeField} />
+                  </DragOverlay>
+                </DndContext>
               )}
             </CardContent>
           </Card>

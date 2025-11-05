@@ -5,9 +5,9 @@ import { usePathname, useRouter } from "next/navigation"
 import { useCallback, type PropsWithChildren } from "react"
 
 import { Button } from "@/components/ui/button"
-import { Tabs } from "@/components/ui/tabs"
 import ProtectedRoute from "@/components/protected-route"
-import { DashboardTabsList } from "@/components/dashboard-tabs-list"
+import { DashboardHeader } from "@/components/dashboard-header"
+import { DashboardTabsGroup } from "@/components/dashboard-tabs-group"
 
 type AdminSection = {
   key: string
@@ -114,16 +114,6 @@ function findActiveItem(section: AdminSection, pathname: string | null) {
   return bestItem
 }
 
-function gridColumns(count: number) {
-  if (count <= 1) return "grid-cols-1"
-  if (count === 2) return "grid-cols-2"
-  if (count === 3) return "grid-cols-3"
-  if (count === 4) return "grid-cols-4"
-  if (count === 5) return "grid-cols-5"
-  if (count === 6) return "grid-cols-6"
-  return "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6"
-}
-
 export default function AdminLayout({ children }: PropsWithChildren) {
   const pathname = usePathname()
   const router = useRouter()
@@ -161,41 +151,33 @@ export default function AdminLayout({ children }: PropsWithChildren) {
   return (
     <ProtectedRoute allowedRoles={["admin"]} unauthorizedRedirectTo="/therapist">
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 dark:from-gray-900 dark:to-gray-800">
-        <header className="bg-card shadow">
-          <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-6 sm:px-6 lg:px-8">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="space-y-2">
-                <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Кабинет администратора</div>
-                <h1 className="text-2xl font-semibold tracking-tight text-foreground">Управление NeiroGen</h1>
-                <p className="text-sm text-muted-foreground">
-                  Управление упражнениями, контентом и правами пользователей
-                </p>
-              </div>
-              {activeSection.cta && (
-                <Button asChild size="sm" className="whitespace-nowrap">
-                  <Link href={activeSection.cta.href}>{activeSection.cta.label}</Link>
-                </Button>
-              )}
-            </div>
-          </div>
-        </header>
+        <DashboardHeader
+          badge="Кабинет администратора"
+          title="Управление NeiroGen"
+          description="Управление упражнениями, контентом и правами пользователей"
+          actions={
+            activeSection.cta ? (
+              <Button asChild size="sm" className="whitespace-nowrap">
+                <Link href={activeSection.cta.href}>{activeSection.cta.label}</Link>
+              </Button>
+            ) : null
+          }
+        />
 
-        <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 space-y-6">
-          <Tabs value={activeSection.key} onValueChange={handleSectionChange}>
-            <DashboardTabsList
-              items={sectionTabs}
-              columnsClassName={gridColumns(ADMIN_SECTIONS.length)}
-              variant="primary"
-            />
-          </Tabs>
+        <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+          <DashboardTabsGroup
+            value={activeSection.key}
+            onValueChange={handleSectionChange}
+            items={sectionTabs}
+            variant="primary"
+          />
 
-          <Tabs value={activeItem?.href ?? ""} onValueChange={handleSubSectionChange}>
-            <DashboardTabsList
-              items={subSectionTabs}
-              columnsClassName={gridColumns(activeSection.items.length)}
-              variant="primary"
-            />
-          </Tabs>
+          <DashboardTabsGroup
+            value={activeItem?.href ?? ""}
+            onValueChange={handleSubSectionChange}
+            items={subSectionTabs}
+            variant="primary"
+          />
         </div>
 
         <main className="mx-auto w-full max-w-7xl px-4 pb-12 sm:px-6 lg:px-8">

@@ -1,0 +1,142 @@
+name: CI
+
+on:
+  push:
+    branches: [ master, main, develop ]
+  pull_request:
+    branches: [ master, main, develop ]
+
+jobs:
+  backend:
+    name: Backend Tests (PHP 8.3, Laravel 10)
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: neirogen_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: secret
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pgsql, pdo_pgsql, redis, mbstring, xml, bcmath
+          coverage: none
+          tools: composer:v2
+
+      - name: Copy .env
+        working-directory: app
+        run: |
+          cp .env.example .env
+          echo "DB_CONNECTION=pgsql" >> .env
+          echo "DB_HOST=127.0.0.1" >> .env
+          echo "DB_PORT=5432" >> .env
+          echo "DB_DATABASE=neirogen_test" >> .env
+          echo "DB_USERNAME=postgres" >> .env
+          echo "DB_PASSWORD=secret" >> .env
+          echo "REDIS_HOST=127.0.0.1" >> .env
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v3
+        with:
+          path: app/vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('app/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Install Composer dependencies
+        working-directory: app
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Generate application key
+        working-directory: app
+        run: php artisan key:generate
+
+      - name: Run migrations
+        working-directory: app
+        run: php artisan migrate --force
+
+      - name: Run Laravel Pint (code style check)
+        working-directory: app
+        run: ./vendor/bin/pint --test
+
+      - name: Run PHPStan (static analysis)
+        working-directory: app
+        run: ./vendor/bin/phpstan analyse --memory-limit=512M --no-progress
+
+      - name: Run PHPUnit/Pest tests
+        working-directory: app
+        run: php artisan test
+
+  frontend:
+    name: Frontend Tests (Node 20, Next.js 14)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run ESLint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Run Jest tests
+        working-directory: frontend
+        run: npm test -- --passWithNoTests
+
+      - name: Build Next.js app
+        working-directory: frontend
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8080
+
+  # PHPStan интегрирован в backend job выше
+  # Отдельный job не нужен
+
+  # TODO: Добавить E2E тесты
+  # e2e:
+  #   name: E2E Tests (Playwright)
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: '20'
+  #     - run: cd frontend && npm ci
+  #     - run: cd frontend && npx playwright install
+  #     - run: cd frontend && npm run test:e2e
