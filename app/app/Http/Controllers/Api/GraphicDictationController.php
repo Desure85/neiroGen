@@ -17,14 +17,10 @@ class GraphicDictationController extends Controller
 {
     public function __construct(
         private readonly GraphicDictationService $service
-    ) {
-    }
+    ) {}
 
     /**
      * Валидирует и возвращает payload графического диктанта.
-     *
-     * @param Request $request
-     * @return JsonResponse
      */
     public function validatePayload(Request $request): JsonResponse
     {
@@ -45,9 +41,6 @@ class GraphicDictationController extends Controller
 
     /**
      * Генерирует команды из массива точек.
-     *
-     * @param Request $request
-     * @return JsonResponse
      */
     public function generateCommands(Request $request): JsonResponse
     {
@@ -57,7 +50,7 @@ class GraphicDictationController extends Controller
             'content_type' => $request->header('Content-Type'),
             'method' => $request->method(),
         ]);
-        
+
         $request->validate([
             'points' => 'required|array|min:2',
             'points.*.row' => 'required|integer|min:0',
@@ -77,9 +70,6 @@ class GraphicDictationController extends Controller
 
     /**
      * Создаёт пустой шаблон графического диктанта.
-     *
-     * @param Request $request
-     * @return JsonResponse
      */
     public function createTemplate(Request $request): JsonResponse
     {

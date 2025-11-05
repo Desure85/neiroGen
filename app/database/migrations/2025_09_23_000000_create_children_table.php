@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->unsignedTinyInteger('age')->nullable();
-            $table->enum('gender', ['male','female'])->nullable();
+            $table->enum('gender', ['male', 'female'])->nullable();
             $table->string('avatar')->nullable();
             $table->unsignedSmallInteger('overall_progress')->default(0);
             $table->timestamp('last_session_at')->nullable();

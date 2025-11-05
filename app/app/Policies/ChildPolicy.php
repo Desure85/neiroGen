@@ -10,7 +10,7 @@ class ChildPolicy
 {
     use HandlesAuthorization;
 
-    public function before(User $user, string $ability): bool|null
+    public function before(User $user, string $ability): ?bool
     {
         if ($user->role === 'admin') {
             return true;

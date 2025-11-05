@@ -2,11 +2,11 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
 use App\Factories\ExerciseContentFactory;
-use App\Services\ExerciseGeneratorService;
 use App\Services\AdaptiveExerciseService;
 use App\Services\ContentBlockService;
+use App\Services\ExerciseGeneratorService;
+use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {

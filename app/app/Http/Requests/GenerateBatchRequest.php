@@ -27,7 +27,7 @@ class GenerateBatchRequest extends FormRequest
             'difficulties.*' => 'string|in:easy,medium,hard',
             'custom_params' => 'nullable|array',
             'custom_params.interactive' => 'boolean',
-            'custom_params.audio_guidance' => 'boolean'
+            'custom_params.audio_guidance' => 'boolean',
         ];
     }
 
@@ -50,7 +50,7 @@ class GenerateBatchRequest extends FormRequest
             'difficulties.array' => 'Сложности должны быть массивом',
             'difficulties.min' => 'Должена быть указана хотя бы одна сложность',
             'difficulties.max' => 'Максимум 3 уровня сложности',
-            'difficulties.*.in' => 'Недопустимая сложность упражнения'
+            'difficulties.*.in' => 'Недопустимая сложность упражнения',
         ];
     }
 }

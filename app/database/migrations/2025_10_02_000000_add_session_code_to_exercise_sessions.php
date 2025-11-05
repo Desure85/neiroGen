@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('exercise_sessions', function (Blueprint $table) {
-            if (!Schema::hasColumn('exercise_sessions', 'session_code')) {
+            if (! Schema::hasColumn('exercise_sessions', 'session_code')) {
                 $table->string('session_code', 16)->unique()->nullable()->after('id');
                 $table->index('session_code');
             }

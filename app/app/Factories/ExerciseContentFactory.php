@@ -4,7 +4,6 @@ namespace App\Factories;
 
 use App\Models\ContentBlock;
 use App\Models\Exercise;
-use Illuminate\Support\Facades\DB;
 
 class ExerciseContentFactory
 {
@@ -35,7 +34,7 @@ class ExerciseContentFactory
         $blockType = $this->determineBlockType($exerciseType);
         $content = $this->formatContentForBlock($exerciseType, $item, $type);
 
-        if (!$content) {
+        if (! $content) {
             return null;
         }
 
@@ -46,21 +45,21 @@ class ExerciseContentFactory
             'metadata' => [
                 'exercise_type' => $exerciseType,
                 'source_item' => $item,
-                'order' => $order
+                'order' => $order,
             ],
             'settings' => [
                 'display_mode' => 'sequential',
                 'auto_play' => $exerciseType === 'pronunciation',
-                'show_progress' => true
+                'show_progress' => true,
             ],
             'is_template' => false,
-            'created_by' => 1 // TODO: Использовать реального пользователя
+            'created_by' => 1, // TODO: Использовать реального пользователя
         ]);
     }
 
     private function determineBlockType(string $exerciseType): string
     {
-        return match($exerciseType) {
+        return match ($exerciseType) {
             'pronunciation', 'articulation' => 'interactive',
             'rhythm' => 'audio',
             'memory' => 'choice',
@@ -70,41 +69,41 @@ class ExerciseContentFactory
 
     private function formatContentForBlock(string $exerciseType, string $item, string $type): ?array
     {
-        return match($exerciseType) {
+        return match ($exerciseType) {
             'pronunciation' => [
                 'interactive_type' => 'listen_repeat',
                 'text' => $item,
                 'audio_url' => null, // TODO: Генерировать TTS
-                'instructions' => ['Повторите вслух']
+                'instructions' => ['Повторите вслух'],
             ],
             'articulation' => [
                 'interactive_type' => 'sound_practice',
                 'text' => $item,
                 'target_sound' => $this->extractSound($item),
-                'instructions' => ['Произносите четко']
+                'instructions' => ['Произносите четко'],
             ],
             'rhythm' => [
                 'url' => null,
                 'pattern' => $item,
                 'tempo' => 'medium',
-                'instructions' => ['Повторите ритм']
+                'instructions' => ['Повторите ритм'],
             ],
             'memory' => [
                 'question' => 'Запомните последовательность',
                 'options' => [$item],
                 'correct_answer' => 0,
-                'instructions' => ['Выберите правильный вариант']
+                'instructions' => ['Выберите правильный вариант'],
             ],
             default => [
                 'text' => $item,
-                'instructions' => ['Выполните задание']
+                'instructions' => ['Выполните задание'],
             ]
         };
     }
 
     private function generateBlockTitle(string $exerciseType, string $item): string
     {
-        return match($exerciseType) {
+        return match ($exerciseType) {
             'pronunciation' => "Произношение: {$item}",
             'articulation' => "Артикуляция: {$item}",
             'rhythm' => "Ритм: {$item}",
@@ -119,6 +118,7 @@ class ExerciseContentFactory
         if (preg_match('/Звук:\s*([а-яё]+)/iu', $item, $matches)) {
             return $matches[1];
         }
+
         return '';
     }
 }

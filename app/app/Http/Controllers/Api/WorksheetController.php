@@ -23,9 +23,7 @@ use Throwable;
 
 class WorksheetController extends Controller
 {
-    public function __construct(private WorksheetPdfService $service)
-    {
-    }
+    public function __construct(private WorksheetPdfService $service) {}
 
     public function index(Request $request): AnonymousResourceCollection
     {
@@ -35,7 +33,7 @@ class WorksheetController extends Controller
         $query = Worksheet::query()
             ->with([
                 'child:id,name,avatar,age,overall_progress,last_session_at,tenant_id',
-                'layout:id,name,tenant_id'
+                'layout:id,name,tenant_id',
             ])
             ->orderByDesc('created_at');
 
@@ -241,6 +239,7 @@ class WorksheetController extends Controller
             $url = $this->service->generate($exerciseIds, $format, $copies);
         } catch (Throwable $e) {
             report($e);
+
             return response()->json([
                 'message' => 'Не удалось сформировать PDF лист.',
                 'error' => $e->getMessage(),

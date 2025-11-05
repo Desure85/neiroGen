@@ -3,7 +3,6 @@
 namespace App\Http\Resources\V1;
 
 use Illuminate\Http\Resources\Json\JsonResource;
-use App\Http\Resources\V1\ChildResource;
 
 class WorksheetResource extends JsonResource
 {

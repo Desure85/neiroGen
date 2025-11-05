@@ -19,7 +19,7 @@ class TenantFactory extends Factory
 
         return [
             'name' => $name,
-            'slug' => Str::slug($name . '-' . $this->faker->unique()->numerify('###')),
+            'slug' => Str::slug($name.'-'.$this->faker->unique()->numerify('###')),
             'settings' => [],
         ];
     }

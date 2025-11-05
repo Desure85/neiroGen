@@ -25,7 +25,7 @@ class GenerateExerciseRequest extends FormRequest
             'custom_params' => 'nullable|array',
             'custom_params.interactive' => 'boolean',
             'custom_params.audio_guidance' => 'boolean',
-            'custom_params.display_time' => 'integer|min:1|max:30'
+            'custom_params.display_time' => 'integer|min:1|max:30',
         ];
     }
 
@@ -44,7 +44,7 @@ class GenerateExerciseRequest extends FormRequest
             'custom_params.audio_guidance.boolean' => 'Параметр audio_guidance должен быть логическим значением',
             'custom_params.display_time.integer' => 'Время отображения должно быть числом',
             'custom_params.display_time.min' => 'Время отображения не может быть меньше 1 секунды',
-            'custom_params.display_time.max' => 'Время отображения не может быть больше 30 секунд'
+            'custom_params.display_time.max' => 'Время отображения не может быть больше 30 секунд',
         ];
     }
 }

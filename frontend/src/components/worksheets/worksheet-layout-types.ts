@@ -9,6 +9,13 @@ export type CanvasElementType =
   | 'exercise_field'       // Игровое поле упражнения
   | 'answer_area'          // Область для ответов
   | 'example'              // Пример выполнения
+  // Графические инструменты
+  | 'line'                 // Линия/стрелка (тип выбирается в lineStyle)
+  | 'shape'                // Фигура (тип выбирается в shapeType)
+  | 'number'               // Номер/метка
+  | 'list'                 // Список
+  | 'table'                // Таблица
+  | 'checkbox'             // Чекбокс
 
 export interface CanvasElement {
   id: string
@@ -22,6 +29,7 @@ export interface CanvasElement {
   // Текстовые элементы
   text?: string
   fontSize?: number
+  fontFamily?: string
   fill?: string
   
   // Изображения
@@ -39,6 +47,22 @@ export interface CanvasElement {
   showNumbers?: boolean                          // Для instructions
   instructionsList?: string[]                    // Для instructions
   exerciseData?: any                             // Данные упражнения
+  
+  // Графические элементы
+  x2?: number                                    // Для line - конечная точка X
+  y2?: number                                    // Для line - конечная точка Y
+  lineStyle?: 'solid' | 'dashed' | 'dotted' | 'arrow-end' | 'arrow-both' | 'arrow-dot'  // Для line - стиль линии
+  shapeType?: 'circle' | 'rectangle' | 'ellipse' | 'triangle' | 'star' | 'pentagon' | 'hexagon'  // Для shape - тип фигуры
+  cornerRadius?: number                          // Для shape - скругление углов
+  numberValue?: number                           // Для number - значение номера
+  numberShape?: 'circle' | 'square' | 'triangle' | 'star' | 'none'  // Для number - форма обрамления
+  items?: string[]                               // Для list - элементы списка
+  listStyle?: 'numbered' | 'bulleted' | 'checkbox'  // Для list - стиль
+  tableRows?: number                             // Для table - количество строк
+  tableCols?: number                             // Для table - количество столбцов
+  tableCells?: string[][]                        // Для table - содержимое ячеек
+  checkboxChecked?: boolean                      // Для checkbox - отмечен ли
+  checkboxSymbol?: 'check' | 'cross' | 'dot'     // Для checkbox - символ отметки
   
   // Настройки отображения
   scaleContent?: boolean                         // Масштабировать ли содержимое

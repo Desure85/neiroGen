@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use App\Services\ExerciseGeneratorService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ExerciseGeneratorController extends Controller
 {
@@ -53,7 +53,7 @@ class ExerciseGeneratorController extends Controller
 
         return response()->json([
             'generated_count' => $exercises->count(),
-            'exercises' => $exercises
+            'exercises' => $exercises,
         ], 201);
     }
 
@@ -67,46 +67,46 @@ class ExerciseGeneratorController extends Controller
                 'pronunciation' => [
                     'name' => 'Произношение',
                     'description' => 'Упражнения для правильного произношения звуков',
-                    'icon' => '🗣️'
+                    'icon' => '🗣️',
                 ],
                 'articulation' => [
                     'name' => 'Артикуляция',
                     'description' => 'Развитие артикуляционной моторики',
-                    'icon' => '👅'
+                    'icon' => '👅',
                 ],
                 'rhythm' => [
                     'name' => 'Ритм',
                     'description' => 'Чувство ритма и темпа речи',
-                    'icon' => '🎵'
+                    'icon' => '🎵',
                 ],
                 'memory' => [
                     'name' => 'Память',
                     'description' => 'Развитие памяти и внимания',
-                    'icon' => '🧠'
+                    'icon' => '🧠',
                 ],
                 'other' => [
                     'name' => 'Другие',
                     'description' => 'Специальные упражнения',
-                    'icon' => '✨'
-                ]
+                    'icon' => '✨',
+                ],
             ],
             'difficulties' => [
                 'easy' => [
                     'name' => 'Легкий',
                     'description' => 'Для начинающих',
-                    'color' => 'green'
+                    'color' => 'green',
                 ],
                 'medium' => [
                     'name' => 'Средний',
                     'description' => 'Для продолжающих',
-                    'color' => 'yellow'
+                    'color' => 'yellow',
                 ],
                 'hard' => [
                     'name' => 'Сложный',
                     'description' => 'Для продвинутых',
-                    'color' => 'red'
-                ]
-            ]
+                    'color' => 'red',
+                ],
+            ],
         ]);
     }
 
@@ -117,39 +117,39 @@ class ExerciseGeneratorController extends Controller
     {
         $type = $request->query('type');
 
-        if (!$type) {
+        if (! $type) {
             return response()->json([
-                'error' => 'Type parameter is required'
+                'error' => 'Type parameter is required',
             ], 400);
         }
 
-        $templates = match($type) {
+        $templates = match ($type) {
             'pronunciation' => [
                 'syllables' => ['ма', 'па', 'ба', 'да', 'га', 'ка', 'та', 'на', 'ла', 'са'],
                 'words' => ['мама', 'папа', 'дом', 'лес', 'кот', 'собака'],
-                'phrases' => ['Мама мыла раму', 'Папа чинит машину']
+                'phrases' => ['Мама мыла раму', 'Папа чинит машину'],
             ],
             'articulation' => [
                 'sounds' => ['р', 'л', 'с', 'з', 'ш', 'ж', 'ч', 'щ'],
-                'patterns' => ['Карл у Клары', 'Шла Саша', 'Рыба в озере']
+                'patterns' => ['Карл у Клары', 'Шла Саша', 'Рыба в озере'],
             ],
             'rhythm' => [
                 'patterns' => ['та-та', 'там-там', 'дин-дон'],
-                'sequences' => [['short', 'long'], ['long', 'short', 'short']]
+                'sequences' => [['short', 'long'], ['long', 'short', 'short']],
             ],
             'memory' => [
                 'sequences' => [
                     'numbers' => range(1, 10),
                     'colors' => ['красный', 'синий', 'зелёный', 'жёлтый'],
-                    'animals' => ['кот', 'собака', 'птица', 'рыба']
-                ]
+                    'animals' => ['кот', 'собака', 'птица', 'рыба'],
+                ],
             ],
             default => []
         };
 
         return response()->json([
             'type' => $type,
-            'templates' => $templates
+            'templates' => $templates,
         ]);
     }
 
@@ -161,17 +161,17 @@ class ExerciseGeneratorController extends Controller
         $validated = $request->validate([
             'content' => 'required|array',
             'type' => 'required|string|in:pronunciation,articulation,rhythm,memory,other',
-            'difficulty' => 'required|string|in:easy,medium,hard'
+            'difficulty' => 'required|string|in:easy,medium,hard',
         ]);
 
         // Базовая валидация структуры контента
         $errors = [];
 
-        if (!isset($validated['content']['items']) || empty($validated['content']['items'])) {
+        if (! isset($validated['content']['items']) || empty($validated['content']['items'])) {
             $errors[] = 'Content must contain items array';
         }
 
-        if (!isset($validated['content']['exercise_type'])) {
+        if (! isset($validated['content']['exercise_type'])) {
             $errors[] = 'Content must specify exercise_type';
         }
 
@@ -180,7 +180,7 @@ class ExerciseGeneratorController extends Controller
         return response()->json([
             'valid' => $isValid,
             'errors' => $errors,
-            'suggestions' => $isValid ? $this->getSuggestions($validated['type'], $validated['content']) : []
+            'suggestions' => $isValid ? $this->getSuggestions($validated['type'], $validated['content']) : [],
         ]);
     }
 

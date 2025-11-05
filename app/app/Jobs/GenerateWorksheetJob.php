@@ -15,7 +15,9 @@ class GenerateWorksheetJob implements ShouldQueue
 
     /** @var int[] */
     public array $exerciseIds;
+
     public string $format;
+
     public int $copies;
 
     public function __construct(array $exerciseIds, string $format = 'A4', int $copies = 1)

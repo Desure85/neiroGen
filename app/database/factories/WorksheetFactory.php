@@ -24,7 +24,7 @@ class WorksheetFactory extends Factory
             'format' => 'A4',
             'copies' => 1,
             'fields_snapshot' => [
-                ['key' => 'child_name', 'label' => 'Имя ребёнка', 'value' => $this->faker->firstName()]
+                ['key' => 'child_name', 'label' => 'Имя ребёнка', 'value' => $this->faker->firstName()],
             ],
             'meta' => ['language' => 'ru'],
             'notes' => $this->faker->sentence(),

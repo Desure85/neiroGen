@@ -1,0 +1,991 @@
+openapi: 3.1.0
+info:
+  title: NeiroGen API
+  description: |
+    API для платформы генерации нейрологопедических упражнений
+    
+    ## Аутентификация
+    Используется Laravel Sanctum с токенами API
+    
+    ## Возможности
+    - Управление детьми (CRUD)
+    - Упражнения и шаблоны
+    - Сессии упражнений
+    - Генерация контента через ComfyUI
+    - Админская панель типов упражнений
+    
+  version: 1.0.0
+  contact:
+    name: NeiroGen Team
+    email: support@neirogen.local
+  license:
+    name: Proprietary
+    
+servers:
+  - url: http://localhost:8000
+    description: Development server
+  - url: https://api.neirogen.com
+    description: Production server (TBD)
+    
+tags:
+  - name: auth
+    description: Аутентификация и регистрация
+  - name: children
+    description: Управление детьми
+  - name: exercises
+    description: Упражнения
+  - name: sessions
+    description: Сессии упражнений
+  - name: admin
+    description: Административные эндпоинты
+  - name: generation
+    description: Генерация контента
+  - name: health
+    description: Health checks и мониторинг
+
+components:
+  securitySchemes:
+    sanctum:
+      type: http
+      scheme: bearer
+      bearerFormat: Token
+      description: Laravel Sanctum API token
+      
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+          example: The given data was invalid
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+              
+    Child:
+      type: object
+      required:
+        - id
+        - name
+        - age
+        - gender
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        name:
+          type: string
+          example: Маша
+        age:
+          type: integer
+          minimum: 3
+          maximum: 12
+          example: 7
+        gender:
+          type: string
+          enum: [male, female, other]
+          example: female
+        avatar:
+          type: string
+          nullable: true
+          example: 👧
+        notes:
+          type: string
+          nullable: true
+          example: Работаем над звуком Р
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+          
+    ExerciseType:
+      type: object
+      required:
+        - id
+        - name
+        - key
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Графический диктант
+        key:
+          type: string
+          example: graphic_dictation
+        domain:
+          type: string
+          nullable: true
+          enum: [neuro, speech, cognitive]
+          example: neuro
+        icon:
+          type: string
+          nullable: true
+          example: 📊
+        description:
+          type: string
+          nullable: true
+          example: Развитие пространственного мышления
+        is_active:
+          type: boolean
+          example: true
+        display_order:
+          type: integer
+          example: 1
+        fields_count:
+          type: integer
+          example: 5
+        exercises_count:
+          type: integer
+          example: 42
+          
+    ExerciseTypeField:
+      type: object
+      required:
+        - id
+        - exercise_type_id
+        - label
+        - key
+        - field_type
+      properties:
+        id:
+          type: integer
+          example: 1
+        exercise_type_id:
+          type: integer
+          example: 1
+        label:
+          type: string
+          example: Размер сетки
+        key:
+          type: string
+          example: grid_size
+        field_type:
+          type: string
+          enum: [string, text, integer, number, boolean, enum, array_enum, json]
+          example: integer
+        is_required:
+          type: boolean
+          example: true
+        default_value:
+          oneOf:
+            - type: string
+            - type: number
+            - type: boolean
+            - type: object
+          nullable: true
+          example: 10
+        min_value:
+          type: number
+          nullable: true
+          example: 5
+        max_value:
+          type: number
+          nullable: true
+          example: 20
+        step:
+          type: number
+          nullable: true
+          example: 1
+        options:
+          oneOf:
+            - type: array
+              items:
+                type: string
+            - type: object
+          nullable: true
+        help_text:
+          type: string
+          nullable: true
+          example: Размер сетки от 5 до 20 клеток
+        display_order:
+          type: integer
+          example: 1
+          
+    Exercise:
+      type: object
+      required:
+        - id
+        - type
+        - difficulty
+      properties:
+        id:
+          type: integer
+          example: 1
+        type:
+          type: string
+          example: graphic_dictation
+        title:
+          type: string
+          nullable: true
+          example: Рисуем кошку
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+          example: medium
+        parameters:
+          type: object
+          additionalProperties: true
+          example:
+            grid_size: 10
+            pattern: cat
+        created_at:
+          type: string
+          format: date-time
+          
+    Health:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+          example: healthy
+        timestamp:
+          type: string
+          format: date-time
+        services:
+          type: object
+          properties:
+            database:
+              type: string
+              enum: [up, down]
+            redis:
+              type: string
+              enum: [up, down]
+            rabbitmq:
+              type: string
+              enum: [up, down]
+            
+  responses:
+    Unauthorized:
+      description: Не авторизован
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+            
+    Forbidden:
+      description: Доступ запрещен
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+            
+    NotFound:
+      description: Ресурс не найден
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+            
+    ValidationError:
+      description: Ошибка валидации
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+paths:
+  /api/health:
+    get:
+      tags:
+        - health
+      summary: Health check
+      description: Проверка состояния сервиса и зависимостей
+      operationId: getHealth
+      responses:
+        '200':
+          description: Статус сервиса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+                
+  /api/auth/register:
+    post:
+      tags:
+        - auth
+      summary: Регистрация нового пользователя
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - password
+                - password_confirmation
+                - role
+              properties:
+                name:
+                  type: string
+                  example: Иван Иванов
+                email:
+                  type: string
+                  format: email
+                  example: ivan@example.com
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                  example: secret123
+                password_confirmation:
+                  type: string
+                  format: password
+                  example: secret123
+                role:
+                  type: string
+                  enum: [therapist, parent, admin]
+                  example: therapist
+      responses:
+        '201':
+          description: Пользователь зарегистрирован
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    type: object
+                  token:
+                    type: string
+        '422':
+          $ref: '#/components/responses/ValidationError'
+          
+  /api/auth/login:
+    post:
+      tags:
+        - auth
+      summary: Вход в систему
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: ivan@example.com
+                password:
+                  type: string
+                  format: password
+                  example: secret123
+      responses:
+        '200':
+          description: Успешная аутентификация
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    type: object
+                  token:
+                    type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          
+  /api/children:
+    get:
+      tags:
+        - children
+      summary: Список детей
+      description: Получить список всех детей текущего пользователя
+      operationId: getChildren
+      security:
+        - sanctum: []
+      responses:
+        '200':
+          description: Список детей
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Child'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+          
+    post:
+      tags:
+        - children
+      summary: Создать ребенка
+      operationId: createChild
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - age
+                - gender
+              properties:
+                name:
+                  type: string
+                  example: Маша
+                age:
+                  type: integer
+                  minimum: 3
+                  maximum: 12
+                  example: 7
+                gender:
+                  type: string
+                  enum: [male, female, other]
+                  example: female
+                avatar:
+                  type: string
+                  example: 👧
+                notes:
+                  type: string
+                  example: Работаем над звуком Р
+      responses:
+        '201':
+          description: Ребенок создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Child'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+          
+  /api/children/{id}:
+    get:
+      tags:
+        - children
+      summary: Получить ребенка
+      operationId: getChild
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: Данные ребенка
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Child'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          
+    put:
+      tags:
+        - children
+      summary: Обновить ребенка
+      operationId: updateChild
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                age:
+                  type: integer
+                gender:
+                  type: string
+                  enum: [male, female, other]
+                avatar:
+                  type: string
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Ребенок обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Child'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+          
+    delete:
+      tags:
+        - children
+      summary: Удалить ребенка
+      operationId: deleteChild
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '204':
+          description: Ребенок удален
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          
+  /api/admin/exercise-types:
+    get:
+      tags:
+        - admin
+      summary: Список типов упражнений
+      description: Получить список всех типов упражнений (admin only)
+      operationId: getExerciseTypes
+      security:
+        - sanctum: []
+      parameters:
+        - name: domain
+          in: query
+          schema:
+            type: string
+            enum: [neuro, speech, cognitive]
+          description: Фильтр по домену
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Поиск по названию/ключу
+        - name: is_active
+          in: query
+          schema:
+            type: boolean
+          description: Фильтр по активности
+      responses:
+        '200':
+          description: Список типов
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ExerciseType'
+                  meta:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+          
+    post:
+      tags:
+        - admin
+      summary: Создать тип упражнения
+      operationId: createExerciseType
+      security:
+        - sanctum: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - key
+              properties:
+                name:
+                  type: string
+                  example: Новый тип
+                key:
+                  type: string
+                  example: new_type
+                domain:
+                  type: string
+                  enum: [neuro, speech, cognitive]
+                icon:
+                  type: string
+                description:
+                  type: string
+                display_order:
+                  type: integer
+                is_active:
+                  type: boolean
+      responses:
+        '201':
+          description: Тип создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExerciseType'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+          
+  /api/admin/exercise-types/{id}:
+    get:
+      tags:
+        - admin
+      summary: Детальная информация о типе
+      operationId: getExerciseType
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Детали типа
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ExerciseType'
+                  - type: object
+                    properties:
+                      fields:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ExerciseTypeField'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          
+    put:
+      tags:
+        - admin
+      summary: Обновить тип упражнения
+      operationId: updateExerciseType
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                key:
+                  type: string
+                domain:
+                  type: string
+                icon:
+                  type: string
+                description:
+                  type: string
+                display_order:
+                  type: integer
+                is_active:
+                  type: boolean
+      responses:
+        '200':
+          description: Тип обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExerciseType'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+          
+    delete:
+      tags:
+        - admin
+      summary: Удалить тип упражнения
+      operationId: deleteExerciseType
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Тип удален
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Нельзя удалить - есть связанные упражнения
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+                
+  /api/admin/exercise-types/{id}/fields:
+    post:
+      tags:
+        - admin
+      summary: Добавить поле к типу
+      operationId: createExerciseTypeField
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID типа упражнения
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - label
+                - key
+                - field_type
+              properties:
+                label:
+                  type: string
+                  example: Размер сетки
+                key:
+                  type: string
+                  example: grid_size
+                field_type:
+                  type: string
+                  enum: [string, text, integer, number, boolean, enum, array_enum, json]
+                  example: integer
+                is_required:
+                  type: boolean
+                default_value:
+                  oneOf:
+                    - type: string
+                    - type: number
+                    - type: boolean
+                    - type: object
+                min_value:
+                  type: number
+                max_value:
+                  type: number
+                step:
+                  type: number
+                options:
+                  oneOf:
+                    - type: array
+                    - type: object
+                help_text:
+                  type: string
+      responses:
+        '201':
+          description: Поле создано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExerciseTypeField'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+          
+  /api/admin/exercise-types/{id}/fields/{fieldId}:
+    patch:
+      tags:
+        - admin
+      summary: Обновить поле типа
+      operationId: updateExerciseTypeField
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: fieldId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                label:
+                  type: string
+                key:
+                  type: string
+                field_type:
+                  type: string
+                is_required:
+                  type: boolean
+                default_value:
+                  oneOf:
+                    - type: string
+                    - type: number
+                    - type: boolean
+                    - type: object
+                min_value:
+                  type: number
+                max_value:
+                  type: number
+                step:
+                  type: number
+                options:
+                  oneOf:
+                    - type: array
+                    - type: object
+                help_text:
+                  type: string
+      responses:
+        '200':
+          description: Поле обновлено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExerciseTypeField'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+          
+    delete:
+      tags:
+        - admin
+      summary: Удалить поле
+      operationId: deleteExerciseTypeField
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: fieldId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Поле удалено
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+          
+  /api/admin/exercise-types/{id}/fields/reorder:
+    post:
+      tags:
+        - admin
+      summary: Изменить порядок полей (drag-and-drop)
+      operationId: reorderExerciseTypeFields
+      security:
+        - sanctum: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID типа упражнения
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - order
+              properties:
+                order:
+                  type: array
+                  items:
+                    type: integer
+                  example: [3, 1, 2, 5, 4]
+                  description: Массив ID полей в новом порядке
+      responses:
+        '204':
+          description: Порядок обновлен
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'

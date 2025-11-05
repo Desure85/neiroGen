@@ -57,7 +57,7 @@ class ExerciseTemplateTest extends TestCase
             'name' => 'Pronunciation Set',
             'description' => null,
             'type' => 'pronunciation',
-            'content' => ['letters' => ['r','l']],
+            'content' => ['letters' => ['r', 'l']],
             'global' => true, // should be ignored for non-admin
         ];
 
@@ -176,8 +176,8 @@ class ExerciseTemplateTest extends TestCase
         $res1 = $this->getJson('/api/templates')->assertOk();
         $res1->assertJsonStructure([
             'data',
-            'links' => ['first','last','prev','next'],
-            'meta' => ['current_page','last_page','per_page','total']
+            'links' => ['first', 'last', 'prev', 'next'],
+            'meta' => ['current_page', 'last_page', 'per_page', 'total'],
         ]);
         $this->assertSame(1, $res1->json('meta.current_page'));
         $this->assertSame(20, $res1->json('meta.per_page'));

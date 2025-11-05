@@ -14,8 +14,8 @@ class GraphicDictationService
     /**
      * Валидирует payload графического диктанта.
      *
-     * @param array $payload
      * @return array Validated payload
+     *
      * @throws ValidationException
      */
     public function validatePayload(array $payload): array
@@ -64,10 +64,6 @@ class GraphicDictationService
 
     /**
      * Генерирует команды из массива точек.
-     *
-     * @param array $points
-     * @param bool $allowDiagonals
-     * @return array
      */
     public function generateCommands(array $points, bool $allowDiagonals = false): array
     {
@@ -102,11 +98,6 @@ class GraphicDictationService
 
     /**
      * Определяет направление движения.
-     *
-     * @param int $dr
-     * @param int $dc
-     * @param bool $allowDiagonals
-     * @return string|null
      */
     private function determineDirection(int $dr, int $dc, bool $allowDiagonals): ?string
     {
@@ -123,7 +114,7 @@ class GraphicDictationService
             return 'up';
         }
 
-        if (!$allowDiagonals) {
+        if (! $allowDiagonals) {
             return null;
         }
 
@@ -145,11 +136,6 @@ class GraphicDictationService
 
     /**
      * Создаёт пустой шаблон графического диктанта.
-     *
-     * @param int $width
-     * @param int $height
-     * @param int $cellSizeMm
-     * @return array
      */
     public function createEmptyTemplate(int $width = 16, int $height = 16, int $cellSizeMm = 10): array
     {

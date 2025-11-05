@@ -6,9 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Templates\StoreExerciseTemplateRequest;
 use App\Http\Requests\Templates\UpdateExerciseTemplateRequest;
 use App\Http\Resources\V1\ExerciseTemplateResource;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use App\Models\ExerciseTemplate;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ExerciseTemplateController extends Controller
 {
@@ -37,12 +37,14 @@ class ExerciseTemplateController extends Controller
         }
 
         $templates = $query->orderByDesc('id')->paginate(20);
+
         return ExerciseTemplateResource::collection($templates);
     }
 
     public function show(Request $request, ExerciseTemplate $template)
     {
         $this->authorize('view', $template);
+
         return new ExerciseTemplateResource($template);
     }
 
@@ -65,6 +67,7 @@ class ExerciseTemplateController extends Controller
             'tenant_id' => $makeGlobal ? null : $tenantId,
             'created_by' => $user?->id,
         ]);
+
         return (new ExerciseTemplateResource($tpl))
             ->response()
             ->setStatusCode(201);
@@ -88,6 +91,7 @@ class ExerciseTemplateController extends Controller
 
         $template->fill(collect($validated)->except('global')->all());
         $template->save();
+
         return new ExerciseTemplateResource($template);
     }
 
@@ -95,6 +99,7 @@ class ExerciseTemplateController extends Controller
     {
         $this->authorize('delete', $template);
         $template->delete();
+
         return response()->json(['deleted' => true]);
     }
 }

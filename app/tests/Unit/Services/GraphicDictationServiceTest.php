@@ -13,7 +13,7 @@ class GraphicDictationServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new GraphicDictationService();
+        $this->service = new GraphicDictationService;
     }
 
     public function test_validates_correct_payload(): void

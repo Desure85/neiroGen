@@ -14,15 +14,15 @@ class RoleMiddleware
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {
         $user = $request->user();
-        
-        if (!$user) {
+
+        if (! $user) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
-        
-        if (!in_array($user->role, $roles)) {
+
+        if (! in_array($user->role, $roles)) {
             return response()->json(['error' => 'Forbidden: insufficient role'], 403);
         }
-        
+
         return $next($request);
     }
 }

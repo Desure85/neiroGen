@@ -21,11 +21,11 @@ class SecurityHeadersMiddleware
             'X-Content-Type-Options' => 'nosniff',
             'Referrer-Policy' => 'strict-origin-when-cross-origin',
             // Keep CSP out by default to avoid breaking Next.js embed; can be enabled later per-route
-            'Permissions-Policy' => "geolocation=(), microphone=(), camera=(), payment=()",
+            'Permissions-Policy' => 'geolocation=(), microphone=(), camera=(), payment=()',
         ];
 
         foreach ($headers as $key => $value) {
-            if (!$response->headers->has($key)) {
+            if (! $response->headers->has($key)) {
                 $response->headers->set($key, $value);
             }
         }

@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\ExerciseSession;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ExerciseSessionController extends Controller
 {
@@ -13,7 +13,7 @@ class ExerciseSessionController extends Controller
     {
         $validated = $request->validate([
             'child_id' => 'nullable|integer|exists:children,id',
-            'per_page' => 'nullable|integer|min:1|max:100'
+            'per_page' => 'nullable|integer|min:1|max:100',
         ]);
 
         $query = ExerciseSession::query()->orderBy('created_at', 'desc');
@@ -22,6 +22,7 @@ class ExerciseSessionController extends Controller
         }
 
         $sessions = $query->paginate($validated['per_page'] ?? 20);
+
         return response()->json($sessions);
     }
 
@@ -41,6 +42,7 @@ class ExerciseSessionController extends Controller
         ]);
 
         $session = ExerciseSession::create($validated);
+
         return response()->json($session, 201);
     }
 

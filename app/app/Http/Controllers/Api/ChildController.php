@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Child;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ChildController extends Controller
 {
@@ -22,6 +22,7 @@ class ChildController extends Controller
         if ($q = $request->get('search')) {
             $query->where('name', 'ILIKE', "%$q%");
         }
+
         return response()->json($query->paginate($perPage));
     }
 
@@ -66,12 +67,14 @@ class ChildController extends Controller
         ]);
 
         $child->update($validated);
+
         return response()->json($child);
     }
 
     public function destroy(Request $request, Child $child): JsonResponse
     {
         $child->delete();
+
         return response()->json(null, 204);
     }
 }

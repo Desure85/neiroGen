@@ -42,7 +42,7 @@ return new class extends Migration
         });
 
         // Удаляем старый CHECK-констрейнт, если ещё существует
-        DB::statement("ALTER TABLE exercises DROP CONSTRAINT IF EXISTS exercises_type_check");
+        DB::statement('ALTER TABLE exercises DROP CONSTRAINT IF EXISTS exercises_type_check');
 
         Schema::table('exercises', function (Blueprint $table) {
             if (! Schema::hasColumn('exercises', 'exercise_type_id')) {

@@ -171,7 +171,7 @@ class ExerciseController extends Controller
     }
 
     /**
-     * @param array<int, array{id:int, order?:int, delay?:int, settings?:array}> $blocks
+     * @param  array<int, array{id:int, order?:int, delay?:int, settings?:array}>  $blocks
      * @return array<int, array{order:int, delay:int, settings:array}>
      */
     private function formatBlocksPayload(array $blocks): array

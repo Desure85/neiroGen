@@ -18,6 +18,7 @@ interface WorksheetLayoutEditorProps {
   exerciseType?: string
   exerciseData?: any
   instructions?: string[]
+  onAddImageClick?: () => void
 }
 
 const cloneLayoutValue = (layout: CanvasLayoutValue): CanvasLayoutValue => ({
@@ -39,7 +40,8 @@ export const WorksheetLayoutEditor: React.FC<WorksheetLayoutEditorProps> = ({
   className,
   exerciseType,
   exerciseData,
-  instructions
+  instructions,
+  onAddImageClick
 }) => {
   const [internal, setInternal] = React.useState<CanvasLayoutValue>(() => (value ? cloneLayoutValue(value) : createDefaultLayout()))
 
@@ -64,6 +66,7 @@ export const WorksheetLayoutEditor: React.FC<WorksheetLayoutEditorProps> = ({
       exerciseType={exerciseType}
       exerciseData={exerciseData}
       instructions={instructions}
+      onAddImageClick={onAddImageClick}
     />
   )
 }

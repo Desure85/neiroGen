@@ -40,7 +40,7 @@ class ContentBlockController extends Controller
             'type' => 'nullable|string|in:text,image,audio,video,interactive,drawing,choice,sequence',
             'is_template' => 'nullable|boolean',
             'search' => 'nullable|string|min:1',
-            'per_page' => 'nullable|integer|min:1|max:100'
+            'per_page' => 'nullable|integer|min:1|max:100',
         ]);
 
         $user = $request->user();
@@ -77,7 +77,7 @@ class ContentBlockController extends Controller
             'content' => 'required|array',
             'metadata' => 'nullable|array',
             'settings' => 'nullable|array',
-            'is_template' => 'nullable|boolean'
+            'is_template' => 'nullable|boolean',
         ]);
 
         try {
@@ -102,7 +102,7 @@ class ContentBlockController extends Controller
 
         return response()->json([
             'block' => $content_block,
-            'analytics' => $this->blockService->getBlockAnalytics($content_block)
+            'analytics' => $this->blockService->getBlockAnalytics($content_block),
         ]);
     }
 
@@ -118,7 +118,7 @@ class ContentBlockController extends Controller
             'content' => 'required|array',
             'metadata' => 'nullable|array',
             'settings' => 'nullable|array',
-            'is_template' => 'nullable|boolean'
+            'is_template' => 'nullable|boolean',
         ]);
 
         // Ensure the block type is always passed for validation rules that depend on it
@@ -155,7 +155,7 @@ class ContentBlockController extends Controller
     public function templates(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'type' => 'nullable|string|in:text,image,audio,video,interactive,drawing,choice,sequence'
+            'type' => 'nullable|string|in:text,image,audio,video,interactive,drawing,choice,sequence',
         ]);
 
         $templates = $this->blockService->getTemplateBlocks($validated['type'] ?? null, $request->user());
@@ -178,7 +178,7 @@ class ContentBlockController extends Controller
             'exercise_data.difficulty' => 'required|string|in:easy,medium,hard',
             'exercise_data.estimated_duration' => 'nullable|integer|min:1',
             'exercise_data.tags' => 'nullable|array',
-            'delays' => 'nullable|array'
+            'delays' => 'nullable|array',
         ]);
 
         try {
@@ -234,7 +234,7 @@ class ContentBlockController extends Controller
             'block_data' => 'required|array',
             'block_data.type' => 'required|string|in:text,image,audio,video,interactive,drawing,choice,sequence',
             'block_data.title' => 'required|string|max:255',
-            'block_data.content' => 'required|array'
+            'block_data.content' => 'required|array',
         ]);
 
         try {
@@ -263,7 +263,7 @@ class ContentBlockController extends Controller
     {
         $validated = $request->validate([
             'block_id' => 'required|integer|exists:content_blocks,id',
-            'exercise_id' => 'required|integer|exists:exercises,id'
+            'exercise_id' => 'required|integer|exists:exercises,id',
         ]);
 
         $block = ContentBlock::find($validated['block_id']);
@@ -273,7 +273,7 @@ class ContentBlockController extends Controller
 
         return response()->json([
             'compatible' => empty($errors),
-            'errors' => $errors
+            'errors' => $errors,
         ]);
     }
 
@@ -284,7 +284,7 @@ class ContentBlockController extends Controller
     {
         $validated = $request->validate([
             'file' => 'required|file|max:10240', // 10MB
-            'type' => 'required|string|in:image,audio,video'
+            'type' => 'required|string|in:image,audio,video',
         ]);
 
         try {
@@ -294,7 +294,7 @@ class ContentBlockController extends Controller
                 'path' => $path,
                 'url' => Storage::url($path),
                 'size' => $validated['file']->getSize(),
-                'mime_type' => $validated['file']->getMimeType()
+                'mime_type' => $validated['file']->getMimeType(),
             ]);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 422);

@@ -40,7 +40,7 @@ class ExerciseSession extends Model
         do {
             $code = strtoupper(Str::random(8));
         } while (static::where('session_code', $code)->exists());
-        
+
         return $code;
     }
 

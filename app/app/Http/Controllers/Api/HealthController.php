@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Contracts\Routing\ResponseFactory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
@@ -54,7 +53,8 @@ class HealthController extends Controller
                 // Fall back to raw TCP check (no phpredis extension needed)
                 $host = (string) env('REDIS_HOST', 'redis');
                 $port = (int) env('REDIS_PORT', 6379);
-                $errno = 0; $errstr = '';
+                $errno = 0;
+                $errstr = '';
                 $t0 = microtime(true);
                 $sock = @fsockopen($host, $port, $errno, $errstr, 1.0);
                 if (is_resource($sock)) {

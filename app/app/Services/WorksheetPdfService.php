@@ -17,7 +17,7 @@ class WorksheetPdfService
     public function generate(array $exerciseIds, string $format = 'A4', int $copies = 1): string
     {
         $format = strtoupper($format);
-        if (!in_array($format, ['A4', 'A5'], true)) {
+        if (! in_array($format, ['A4', 'A5'], true)) {
             throw new InvalidArgumentException('Unsupported format supplied.');
         }
 

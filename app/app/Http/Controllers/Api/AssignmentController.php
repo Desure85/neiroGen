@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Assignments\GenerateIllustrationRequest;
 use App\Http\Requests\Assignments\StoreAssignmentRequest;
 use App\Http\Requests\Assignments\UpdateAssignmentRequest;
-use App\Http\Requests\Assignments\GenerateIllustrationRequest;
 use App\Http\Resources\V1\AssignmentResource;
-use App\Models\Assignment;
 use App\Jobs\GenerateAssignmentIllustrationJob;
+use App\Models\Assignment;
 use Illuminate\Http\Request;
 
 class AssignmentController extends Controller
@@ -45,6 +45,7 @@ class AssignmentController extends Controller
         }
 
         $list = $q->orderByDesc('id')->paginate(20);
+
         return AssignmentResource::collection($list);
     }
 
@@ -97,6 +98,7 @@ class AssignmentController extends Controller
     public function destroy(Request $request, Assignment $assignment)
     {
         $assignment->delete();
+
         return response()->json(['deleted' => true]);
     }
 
@@ -112,6 +114,7 @@ class AssignmentController extends Controller
             'tenant_id' => $assignment->tenant_id,
         ];
         dispatch(new GenerateAssignmentIllustrationJob($assignment->id, $payload));
+
         return response()->json(['queued' => true], 202);
     }
 }

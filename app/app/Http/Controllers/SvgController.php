@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -13,13 +13,13 @@ class SvgController extends Controller
     public function generate(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'prompt' => ['required','string','max:2000'],
-            'width' => ['nullable','integer','min:64','max:4096'],
-            'height' => ['nullable','integer','min:64','max:4096'],
+            'prompt' => ['required', 'string', 'max:2000'],
+            'width' => ['nullable', 'integer', 'min:64', 'max:4096'],
+            'height' => ['nullable', 'integer', 'min:64', 'max:4096'],
         ]);
 
         $svggenUrl = rtrim(config('app.svggen_url', env('SVGGEN_URL', 'http://svggen:4000')), '/');
-        $endpoint = $svggenUrl . '/generate';
+        $endpoint = $svggenUrl.'/generate';
 
         try {
             $response = Http::timeout((int) config('services.svggen.timeout', 150))
@@ -39,7 +39,7 @@ class SvgController extends Controller
             ], 502);
         }
 
-        if (!$response->ok()) {
+        if (! $response->ok()) {
             return response()->json([
                 'error' => 'svggen_error',
                 'status' => $response->status(),
@@ -49,7 +49,7 @@ class SvgController extends Controller
 
         $payload = $response->json();
 
-        if (!is_array($payload)) {
+        if (! is_array($payload)) {
             return response()->json([
                 'error' => 'svggen_bad_payload',
             ], 502);
@@ -69,7 +69,7 @@ class SvgController extends Controller
         $key = null;
         $storagePrefix = asset('storage/');
         if (is_string($publicUrl) && str_starts_with($publicUrl, $storagePrefix)) {
-            $key = 'svg/' . ltrim(Str::after($publicUrl, $storagePrefix . '/'), '/');
+            $key = 'svg/'.ltrim(Str::after($publicUrl, $storagePrefix.'/'), '/');
         }
 
         return response()->json([

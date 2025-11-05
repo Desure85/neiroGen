@@ -16,6 +16,7 @@ final class RequestLoggingMiddleware
         $request->attributes->set('__req_start', microtime(true));
         /** @var Response $response */
         $response = $next($request);
+
         return $response;
     }
 

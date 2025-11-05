@@ -53,7 +53,7 @@ class ContentBlockService
         return $query->orderBy('created_at', 'desc')->get();
     }
 
-    public function getTemplateBlocks(string $type = null, ?User $user = null): Collection
+    public function getTemplateBlocks(?string $type = null, ?User $user = null): Collection
     {
         $query = ContentBlock::templates();
 
@@ -83,14 +83,14 @@ class ContentBlockService
             'difficulty' => $exerciseData['difficulty'] ?? 'medium',
             'estimated_duration' => $exerciseData['estimated_duration'] ?? 15,
             'tags' => $exerciseData['tags'] ?? ['custom'],
-            'is_active' => true
+            'is_active' => true,
         ], $exerciseData));
 
         // Добавляем блоки к упражнению
         foreach ($blocks as $index => $block) {
             $exercise->addContentBlock($block, [
                 'order' => $index + 1,
-                'delay' => $exerciseData['delays'][$block->id] ?? 0
+                'delay' => $exerciseData['delays'][$block->id] ?? 0,
             ]);
         }
 
@@ -101,7 +101,7 @@ class ContentBlockService
     {
         return ContentBlock::create([
             'type' => $block->type,
-            'title' => $block->title . ' (копия)',
+            'title' => $block->title.' (копия)',
             'content' => $block->content,
             'metadata' => $block->metadata,
             'settings' => $block->settings,
@@ -124,7 +124,7 @@ class ContentBlockService
                 ->avg('pivot_order') ?? 0,
             'last_used' => $block->exercises()
                 ->latest('pivot_updated_at')
-                ->first()?->pivot_updated_at
+                ->first()?->pivot_updated_at,
         ];
     }
 
@@ -138,7 +138,7 @@ class ContentBlockService
             'interactive' => ['title', 'content.interactive_type', 'content.data'],
             'drawing' => ['title', 'content.instructions'],
             'choice' => ['title', 'content.question', 'content.options'],
-            'sequence' => ['title', 'content.items']
+            'sequence' => ['title', 'content.items'],
         ];
 
         $requiredFields = $rules[$data['type']] ?? ['title'];
@@ -148,7 +148,7 @@ class ContentBlockService
             $value = $data;
 
             foreach ($keys as $key) {
-                if (!isset($value[$key])) {
+                if (! isset($value[$key])) {
                     throw new \Exception("Поле {$field} обязательно для типа {$data['type']}");
                 }
                 $value = $value[$key];
@@ -167,7 +167,7 @@ class ContentBlockService
             'content' => $this->prepareContentForExport($block),
             'metadata' => $block->metadata,
             'settings' => $block->settings,
-            'exported_at' => now()->toISOString()
+            'exported_at' => now()->toISOString(),
         ];
     }
 
@@ -195,7 +195,7 @@ class ContentBlockService
                 $content['file_info'] = [
                     'size' => Storage::size($content['path']),
                     'mime_type' => Storage::mimeType($content['path']),
-                    'last_modified' => Storage::lastModified($content['path'])
+                    'last_modified' => Storage::lastModified($content['path']),
                 ];
             }
         }
@@ -207,6 +207,7 @@ class ContentBlockService
     {
         // Убираем экспортные метаданные
         unset($content['file_info']);
+
         return $content;
     }
 
@@ -223,9 +224,9 @@ class ContentBlockService
                 ->where('tenant_id', $user->tenant_id);
         }
 
-        return $queryBuilder->where(function($q) use ($query) {
+        return $queryBuilder->where(function ($q) use ($query) {
             $q->where('title', 'like', "%{$query}%")
-              ->orWhere('content', 'like', "%{$query}%");
+                ->orWhere('content', 'like', "%{$query}%");
         })->orderBy('title')->get();
     }
 
@@ -242,12 +243,12 @@ class ContentBlockService
         $errors = [];
 
         // Проверка типа блока
-        if (!$this->isBlockCompatibleWithExercise($block, $exercise)) {
+        if (! $this->isBlockCompatibleWithExercise($block, $exercise)) {
             $errors[] = "Блок типа {$block->type} не совместим с упражнением типа {$exercise->type}";
         }
 
         // Проверка настроек
-        if ($block->type === 'interactive' && !isset($block->content['interactive_type'])) {
+        if ($block->type === 'interactive' && ! isset($block->content['interactive_type'])) {
             $errors[] = 'Интерактивный блок должен иметь тип взаимодействия';
         }
 
@@ -261,7 +262,7 @@ class ContentBlockService
             'articulation' => ['text', 'audio', 'interactive'],
             'rhythm' => ['text', 'audio', 'interactive'],
             'memory' => ['text', 'image', 'sequence', 'interactive'],
-            'custom' => ['text', 'image', 'audio', 'video', 'interactive', 'drawing', 'choice', 'sequence']
+            'custom' => ['text', 'image', 'audio', 'video', 'interactive', 'drawing', 'choice', 'sequence'],
         ];
 
         $allowedTypes = $compatibilityMatrix[$exercise->type] ?? ['text'];

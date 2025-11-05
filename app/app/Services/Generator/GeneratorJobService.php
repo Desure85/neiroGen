@@ -45,8 +45,8 @@ class GeneratorJobService
     {
         return GeneratorJob::query()
             ->with('shards')
-            ->when($tenantId !== null, fn($query) => $query->where('tenant_id', $tenantId))
-            ->when($tenantId === null && $userId !== null, fn($query) => $query->where('user_id', $userId))
+            ->when($tenantId !== null, fn ($query) => $query->where('tenant_id', $tenantId))
+            ->when($tenantId === null && $userId !== null, fn ($query) => $query->where('user_id', $userId))
             ->find($jobId);
     }
 
@@ -97,6 +97,7 @@ class GeneratorJobService
 
             if (! $job) {
                 Log::warning('GeneratorJob not found while completing shard', ['job_id' => $shard->job_id]);
+
                 return;
             }
 
@@ -133,6 +134,7 @@ class GeneratorJobService
             $job = $shard->job()->lockForUpdate()->first();
             if (! $job) {
                 Log::warning('GeneratorJob not found while failing shard', ['job_id' => $shard->job_id]);
+
                 return;
             }
 

@@ -2,15 +2,15 @@
 
 namespace App\Providers;
 
-use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use App\Models\Assignment;
-use App\Models\ExerciseTemplate;
-use App\Models\ContentBlock;
 use App\Models\Child;
+use App\Models\ContentBlock;
+use App\Models\ExerciseTemplate;
 use App\Policies\AssignmentPolicy;
-use App\Policies\ExerciseTemplatePolicy;
-use App\Policies\ContentBlockPolicy;
 use App\Policies\ChildPolicy;
+use App\Policies\ContentBlockPolicy;
+use App\Policies\ExerciseTemplatePolicy;
+use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
 class AuthServiceProvider extends ServiceProvider
 {

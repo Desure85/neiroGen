@@ -16,7 +16,7 @@ final class RequestIdMiddleware
     public function handle(Request $request, Closure $next): Response
     {
         $reqId = $request->headers->get(self::HEADER);
-        if (!is_string($reqId) || $reqId === '') {
+        if (! is_string($reqId) || $reqId === '') {
             $reqId = bin2hex(random_bytes(16));
         }
 
@@ -26,9 +26,10 @@ final class RequestIdMiddleware
 
         /** @var Response $response */
         $response = $next($request);
-        if (!$response->headers->has(self::HEADER)) {
+        if (! $response->headers->has(self::HEADER)) {
             $response->headers->set(self::HEADER, $reqId);
         }
+
         return $response;
     }
 }

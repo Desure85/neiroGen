@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\Exercise;
 use App\Models\ChildProgress;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -34,7 +33,7 @@ class AdaptiveExerciseService
             $exercise = $this->generator->generateExercise($exerciseType, $difficulty, [
                 'age_group' => $ageGroup,
                 'skill_focus' => $this->identifySkillFocus($skillLevels, $exerciseType),
-                'session_context' => 'adaptive_generation'
+                'session_context' => 'adaptive_generation',
             ]);
 
             $exercises->push($exercise);
@@ -48,13 +47,13 @@ class AdaptiveExerciseService
      */
     private function determineAgeGroup(User $child): string
     {
-        if (!$child->birth_date) {
+        if (! $child->birth_date) {
             return 'unknown';
         }
 
         $age = now()->diffInYears($child->birth_date);
 
-        return match(true) {
+        return match (true) {
             $age < 4 => 'toddler',      // 0-3 года
             $age < 7 => 'preschool',    // 4-6 лет
             $age < 12 => 'school_junior', // 7-11 лет
@@ -71,7 +70,7 @@ class AdaptiveExerciseService
         $progress = ChildProgress::where('user_id', $child->id)
             ->with('exercise')
             ->get()
-            ->groupBy(fn($p) => $p->exercise->type);
+            ->groupBy(fn ($p) => $p->exercise->type);
 
         $skillLevels = [];
 
@@ -88,7 +87,7 @@ class AdaptiveExerciseService
                     'level' => $this->calculateSkillLevel($avgScore, $totalAttempts),
                     'score' => $avgScore,
                     'attempts' => $totalAttempts,
-                    'last_practice' => $typeProgress->sortByDesc('updated_at')->first()->updated_at ?? null
+                    'last_practice' => $typeProgress->sortByDesc('updated_at')->first()->updated_at ?? null,
                 ];
             }
         }
@@ -105,7 +104,7 @@ class AdaptiveExerciseService
             return 'beginner';
         }
 
-        return match(true) {
+        return match (true) {
             $avgScore >= 85 => 'expert',
             $avgScore >= 70 => 'advanced',
             $avgScore >= 50 => 'intermediate',
@@ -123,7 +122,7 @@ class AdaptiveExerciseService
             'favorite_types' => ['pronunciation', 'memory'], // По умолчанию
             'avoid_types' => [],
             'optimal_session_length' => 15, // минут
-            'preferred_difficulty' => 'medium'
+            'preferred_difficulty' => 'medium',
         ];
     }
 
@@ -133,7 +132,7 @@ class AdaptiveExerciseService
     private function selectNextExerciseType(array $skillLevels, array $preferences): string
     {
         // Приоритет слабым навыкам
-        $weakSkills = collect($skillLevels)->filter(fn($skill) => $skill['level'] === 'beginner')->keys();
+        $weakSkills = collect($skillLevels)->filter(fn ($skill) => $skill['level'] === 'beginner')->keys();
 
         if ($weakSkills->isNotEmpty()) {
             return $weakSkills->random();
@@ -141,7 +140,7 @@ class AdaptiveExerciseService
 
         // Избегать недавно практиковавшихся
         $recentlyPracticed = collect($skillLevels)
-            ->filter(fn($skill) => $skill['last_practice'] && $skill['last_practice']->diffInHours(now()) < 2)
+            ->filter(fn ($skill) => $skill['last_practice'] && $skill['last_practice']->diffInHours(now()) < 2)
             ->keys();
 
         $availableTypes = collect(['pronunciation', 'articulation', 'rhythm', 'memory'])
@@ -183,7 +182,7 @@ class AdaptiveExerciseService
     private function getRecentPerformance(User $child, string $exerciseType): array
     {
         $recentProgress = ChildProgress::where('user_id', $child->id)
-            ->whereHas('exercise', fn($q) => $q->where('type', $exerciseType))
+            ->whereHas('exercise', fn ($q) => $q->where('type', $exerciseType))
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get();
@@ -211,7 +210,7 @@ class AdaptiveExerciseService
         return [
             'trend' => $trend,
             'streak' => $this->calculateStreak($scores),
-            'avg_score' => $avgScore
+            'avg_score' => $avgScore,
         ];
     }
 
@@ -246,7 +245,7 @@ class AdaptiveExerciseService
      */
     private function increaseDifficulty(string $currentLevel): string
     {
-        return match($currentLevel) {
+        return match ($currentLevel) {
             'beginner' => 'easy',
             'easy' => 'medium',
             'medium' => 'hard',
@@ -259,7 +258,7 @@ class AdaptiveExerciseService
      */
     private function decreaseDifficulty(string $currentLevel): string
     {
-        return match($currentLevel) {
+        return match ($currentLevel) {
             'hard' => 'medium',
             'medium' => 'easy',
             'easy' => 'easy', // Минимум
@@ -274,11 +273,11 @@ class AdaptiveExerciseService
     {
         $skillLevel = $skillLevels[$exerciseType] ?? null;
 
-        if (!$skillLevel) {
+        if (! $skillLevel) {
             return 'basic_foundation';
         }
 
-        return match($skillLevel['level']) {
+        return match ($skillLevel['level']) {
             'beginner' => 'basic_foundation',
             'intermediate' => 'skill_building',
             'advanced' => 'precision_refinement',

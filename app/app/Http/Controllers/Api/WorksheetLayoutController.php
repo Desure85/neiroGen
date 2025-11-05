@@ -70,7 +70,7 @@ class WorksheetLayoutController extends Controller
 
         $tenantId = optional($request->user())->tenant_id;
 
-        DB::transaction(function () use ($tenantId, $worksheetLayout) {
+        DB::transaction(function () use ($worksheetLayout) {
             WorksheetLayout::query()
                 ->when(
                     $worksheetLayout->tenant_id !== null,

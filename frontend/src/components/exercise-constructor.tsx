@@ -14,7 +14,9 @@ import {
   type CanvasLayoutValue,
   createEmptyCanvasScene,
 } from '@/components/worksheets/worksheet-layout-editor'
-import { Star, StarOff, Settings2, ArrowRight, ArrowUp, ArrowDown, Eye, EyeOff, X } from 'lucide-react'
+import { Star, StarOff, Settings2, ArrowRight, ArrowUp, ArrowDown, Eye, EyeOff, X, Check, AlertCircle, ImagePlus } from 'lucide-react'
+import { useToast } from '@/components/ui/use-toast'
+import { FileManager } from '@/components/file-manager'
 
 const CONSTRUCTOR_STEPS = [
   { id: 'type', label: 'Выбор типа', description: 'Определите формат и сценарий упражнения' },
@@ -536,6 +538,7 @@ const DIFF_OPTIONS: Array<{ value: ExerciseDraft['difficulty']; label: string }>
 
 export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (draft: ExerciseDraft) => void; initialType?: string }) {
   const { t } = useI18n()
+  const { toast } = useToast()
   const [draft, setDraft] = React.useState<ExerciseDraft>({
     title: '',
     type: (initialType as any) || 'pronunciation',
@@ -572,18 +575,80 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
   const [saveLoading, setSaveLoading] = React.useState(false)
   const [saveError, setSaveError] = React.useState<string>('')
   const [saveOk, setSaveOk] = React.useState<string>('')
+  const [showFileManager, setShowFileManager] = React.useState(false)
+  
   const handleLayoutChange = React.useCallback((value: CanvasLayoutValue) => {
     setDraft((prev) => ({ ...prev, layout: value }))
   }, [])
+
+  const handleAddFileToCanvas = React.useCallback((file: any, insertType: 'image' | 'qr' | 'link') => {
+    const generateId = () => `el-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    
+    setDraft((prev) => {
+      const scene = { ...prev.layout.scene }
+      
+      if (insertType === 'image' || insertType === 'qr') {
+        // Добавить изображение или QR-код
+        const newElement = {
+          id: generateId(),
+          type: 'image' as const,
+          x: 100,
+          y: 100,
+          width: 200,
+          height: 200,
+          url: file.url,
+        }
+        scene.elements = [...scene.elements, newElement]
+      } else if (insertType === 'link') {
+        // Добавить текст со ссылкой
+        const newElement = {
+          id: generateId(),
+          type: 'text' as const,
+          x: 100,
+          y: 100,
+          width: 300,
+          height: 50,
+          text: file.url || file.name,
+          fontSize: 14,
+        }
+        scene.elements = [...scene.elements, newElement]
+      }
+      
+      return {
+        ...prev,
+        layout: {
+          ...prev.layout,
+          scene,
+        }
+      }
+    })
+    
+    setShowFileManager(false)
+    toast({ title: 'Файл добавлен на макет' })
+  }, [toast])
+
   React.useEffect(() => {
     if (!draft.type) return
     const load = async () => {
       try {
-        const res = await apiFetch(`/api/exercise-types/${draft.type}`)
+        const res = await apiFetch(`/api/admin/exercise-types?key=${encodeURIComponent(draft.type)}`)
         if (!res.ok) throw new Error('HTTP '+res.status)
         const data = await res.json()
-        setTypeSchema(data)
-        if (data?.defaults) setCustomParams((prev) => ({ ...data.defaults, ...prev }))
+        // data.data - массив типов, берем первый
+        const typeData = Array.isArray(data.data) ? data.data.find((t: any) => t.key === draft.type) : null
+        if (!typeData) return
+        setTypeSchema(typeData)
+        
+        // Инициализируем customParams из default_value полей
+        if (typeData.fields) {
+          const defaults: Record<string, any> = {}
+          typeData.fields.forEach((field: any) => {
+            if (field.default_value !== null && field.default_value !== undefined) {
+              defaults[field.key] = field.default_value
+            }
+          })
+          setCustomParams((prev) => ({ ...defaults, ...prev }))
+        }
       } catch (e) {
         // no-op, keep schema null
       }
@@ -703,9 +768,31 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
 
   const create = async () => {
     setSaveError(''); setSaveOk(''); setSaveLoading(true)
+    
+    // Валидация
+    if (!draft.title.trim()) {
+      toast({
+        title: 'Ошибка валидации',
+        description: 'Введите название упражнения',
+        variant: 'destructive',
+      })
+      setSaveLoading(false)
+      return
+    }
+    
+    if (draft.instructions.length === 0) {
+      toast({
+        title: 'Ошибка валидации',
+        description: 'Добавьте хотя бы одну инструкцию',
+        variant: 'destructive',
+      })
+      setSaveLoading(false)
+      return
+    }
+    
     try {
       const payload = {
-        title: draft.title || 'Без названия',
+        title: draft.title,
         description: draft.instructions.join('\n'),
         type: draft.type,
         difficulty: draft.difficulty,
@@ -729,12 +816,47 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       })
-      if (!res.ok) throw new Error('HTTP '+res.status)
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null)
+        throw new Error(errorData?.message || `HTTP ${res.status}`)
+      }
+      
       const data = await res.json()
+      
+      toast({
+        title: '✅ Упражнение создано!',
+        description: `«${draft.title}» успешно сохранено. ID: ${data.id || 'N/A'}`,
+      })
+      
       setSaveOk('Упражнение сохранено')
       onCreate?.(draft)
+      
+      // Сброс формы после успешного сохранения
+      setTimeout(() => {
+        setDraft({
+          title: '',
+          type: draft.type, // Сохраняем выбранный тип
+          difficulty: 'medium',
+          estimated_duration: 10,
+          instructions: [''],
+          blocks: [],
+          layout: {
+            scene: createEmptyCanvasScene(),
+            snapshot: null,
+          },
+        })
+        setCurrentStep('configure')
+      }, 1500)
+      
     } catch (e:any) {
-      setSaveError('Ошибка сохранения: ' + (e?.message || e))
+      const errorMessage = e?.message || String(e)
+      setSaveError('Ошибка сохранения: ' + errorMessage)
+      toast({
+        title: '❌ Ошибка сохранения',
+        description: errorMessage,
+        variant: 'destructive',
+      })
     } finally {
       setSaveLoading(false)
     }
@@ -1112,7 +1234,7 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
                   </div>
                 </div>
 
-                {typeSchema?.schema && draft.type !== 'graphic_dictation' && (
+                {typeSchema?.fields && draft.type !== 'graphic_dictation' && (
                   <div className="space-y-4 rounded-lg border border-border bg-muted/30 p-4">
                     <div>
                       <div className="text-sm text-muted-foreground">Параметры типа</div>
@@ -1122,73 +1244,87 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
                       )}
                     </div>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      {Object.entries(typeSchema.schema as Record<string, any>).map(([key, def]: any) => {
-                        const v = customParams[key]
-                        if (def.type === 'integer' || def.type === 'number') {
+                      {typeSchema.fields.map((field: any) => {
+                        const v = customParams[field.key]
+                        const fieldType = field.field_type
+                        
+                        if (fieldType === 'integer' || fieldType === 'number') {
                           return (
-                            <div key={key}>
-                              <label className="block text-sm mb-1 text-muted-foreground">{key}</label>
+                            <div key={field.key}>
+                              <label className="block text-sm mb-1 font-medium text-foreground">
+                                {field.label}
+                                {field.is_required && <span className="text-destructive ml-1">*</span>}
+                              </label>
+                              {field.help_text && (
+                                <div className="text-xs text-muted-foreground mb-1">{field.help_text}</div>
+                              )}
                               <Input
                                 type="number"
-                                value={v ?? ''}
-                                min={def.min ?? undefined}
-                                max={def.max ?? undefined}
-                                step={def.type === 'number' ? '0.01' : '1'}
-                                onChange={(e) => setCustomParams(prev => ({ ...prev, [key]: def.type === 'number' ? Number(e.target.value) : parseInt(e.target.value || '0', 10) }))}
+                                value={v ?? field.default_value ?? ''}
+                                min={field.min_value ?? undefined}
+                                max={field.max_value ?? undefined}
+                                step={field.step ?? (fieldType === 'number' ? '0.01' : '1')}
+                                onChange={(e) => setCustomParams(prev => ({ ...prev, [field.key]: fieldType === 'number' ? Number(e.target.value) : parseInt(e.target.value || '0', 10) }))}
+                                required={field.is_required}
                               />
                             </div>
                           )
                         }
-                        if (def.type === 'enum') {
+                        
+                        if (fieldType === 'enum' || fieldType === 'array_enum') {
+                          const options = Array.isArray(field.options) ? field.options : []
+                          
+                          if (fieldType === 'enum') {
+                            return (
+                              <div key={field.key}>
+                                <label className="block text-sm mb-1 font-medium text-foreground">
+                                  {field.label}
+                                  {field.is_required && <span className="text-destructive ml-1">*</span>}
+                                </label>
+                                {field.help_text && (
+                                  <div className="text-xs text-muted-foreground mb-1">{field.help_text}</div>
+                                )}
+                                <select
+                                  className="w-full rounded border border-border bg-background p-2"
+                                  value={v ?? field.default_value ?? ''}
+                                  onChange={(e) => setCustomParams(prev => ({ ...prev, [field.key]: e.target.value }))}
+                                  required={field.is_required}
+                                >
+                                  {!field.is_required && <option value="">-- Выберите --</option>}
+                                  {options.map((val: string) => (
+                                    <option key={val} value={val}>{val}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            )
+                          }
+                          
+                          // array_enum
+                          const current: string[] = Array.isArray(v) ? v : (Array.isArray(field.default_value) ? field.default_value : [])
                           return (
-                            <div key={key}>
-                              <label className="block text-sm mb-1 text-muted-foreground">{key}</label>
-                              <select
-                                className="w-full rounded border border-border bg-background p-2"
-                                value={v ?? def.default ?? ''}
-                                onChange={(e) => setCustomParams(prev => ({ ...prev, [key]: e.target.value }))}
-                              >
-                                {(def.values as string[]).map(val => (
-                                  <option key={val} value={val}>{val}</option>
-                                ))}
-                              </select>
-                            </div>
-                          )
-                        }
-                        if (def.type === 'boolean') {
-                          return (
-                            <div key={key} className="flex items-center gap-2">
-                              <input
-                                id={`bool_${key}`}
-                                type="checkbox"
-                                checked={Boolean(v ?? def.default ?? false)}
-                                onChange={(e) => setCustomParams(prev => ({ ...prev, [key]: e.target.checked }))}
-                              />
-                              <label htmlFor={`bool_${key}`} className="text-sm text-muted-foreground">{key}</label>
-                            </div>
-                          )
-                        }
-                        if (def.type === 'array_enum') {
-                          const values: string[] = def.values || []
-                          const current: string[] = Array.isArray(v) ? v : (def.default || [])
-                          return (
-                            <div key={key}>
-                              <label className="block text-sm mb-1 text-muted-foreground">{key}</label>
+                            <div key={field.key}>
+                              <label className="block text-sm mb-1 font-medium text-foreground">
+                                {field.label}
+                                {field.is_required && <span className="text-destructive ml-1">*</span>}
+                              </label>
+                              {field.help_text && (
+                                <div className="text-xs text-muted-foreground mb-1">{field.help_text}</div>
+                              )}
                               <div className="flex flex-wrap gap-2">
-                                {values.map(val => (
+                                {options.map((val: string) => (
                                   <button
                                     key={val}
                                     type="button"
                                     onClick={() => {
                                       setCustomParams(prev => {
-                                        const arr = new Set<string>(Array.isArray(prev[key]) ? prev[key] : current)
+                                        const arr = new Set<string>(Array.isArray(prev[field.key]) ? prev[field.key] : current)
                                         if (arr.has(val)) arr.delete(val); else arr.add(val)
-                                        return { ...prev, [key]: Array.from(arr) }
+                                        return { ...prev, [field.key]: Array.from(arr) }
                                       })
                                     }}
                                     className={cn(
                                       'px-2 py-1 text-xs rounded border transition-colors',
-                                      (current.includes(val) || (Array.isArray(customParams[key]) && customParams[key].includes(val))) ? 'bg-primary text-primary-foreground border-transparent' : 'bg-muted text-foreground/80 border-border hover:bg-muted/80'
+                                      (current.includes(val) || (Array.isArray(customParams[field.key]) && customParams[field.key].includes(val))) ? 'bg-primary text-primary-foreground border-transparent' : 'bg-muted text-foreground/80 border-border hover:bg-muted/80'
                                     )}
                                   >
                                     {val}
@@ -1198,8 +1334,50 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
                             </div>
                           )
                         }
+                        
+                        // Остальные типы полей (string, text, boolean, json)
+                        if (fieldType === 'string' || fieldType === 'text') {
+                          return (
+                            <div key={field.key}>
+                              <label className="block text-sm mb-1 font-medium text-foreground">
+                                {field.label}
+                                {field.is_required && <span className="text-destructive ml-1">*</span>}
+                              </label>
+                              {field.help_text && (
+                                <div className="text-xs text-muted-foreground mb-1">{field.help_text}</div>
+                              )}
+                              <Input
+                                value={v ?? field.default_value ?? ''}
+                                onChange={(e) => setCustomParams(prev => ({ ...prev, [field.key]: e.target.value }))}
+                                required={field.is_required}
+                              />
+                            </div>
+                          )
+                        }
+                        
+                        if (fieldType === 'boolean') {
+                          return (
+                            <div key={field.key} className="flex items-center gap-2">
+                              <input
+                                id={`bool_${field.key}`}
+                                type="checkbox"
+                                checked={Boolean(v ?? field.default_value ?? false)}
+                                onChange={(e) => setCustomParams(prev => ({ ...prev, [field.key]: e.target.checked }))}
+                              />
+                              <label htmlFor={`bool_${field.key}`} className="text-sm font-medium text-foreground">
+                                {field.label}
+                              </label>
+                              {field.help_text && (
+                                <div className="text-xs text-muted-foreground ml-2">{field.help_text}</div>
+                              )}
+                            </div>
+                          )
+                        }
+                        
                         return (
-                          <div key={key} className="text-xs text-muted-foreground">Неподдерживаемое поле: {key}</div>
+                          <div key={field.key} className="text-xs text-muted-foreground">
+                            Неподдерживаемое поле: {field.label} ({field.field_type})
+                          </div>
                         )
                       })}
                     </div>
@@ -1280,8 +1458,10 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
                         ? graphicDictationResult.instructions
                         : draft.instructions
                     }
+                    onAddImageClick={() => setShowFileManager(true)}
                   />
                 </div>
+
 
                 <div className="space-y-2">
                   {saveError && <div className="text-sm text-red-600">{saveError}</div>}
@@ -1299,6 +1479,35 @@ export function ExerciseConstructor({ onCreate, initialType }: { onCreate?: (dra
             )}
           </CardContent>
       </Card>
+      
+      {/* Модальное окно файлового менеджера */}
+      {showFileManager && (
+        <div 
+          className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setShowFileManager(false)}
+        >
+          <div 
+            className="relative max-w-6xl w-full bg-card rounded-lg shadow-2xl border border-border max-h-[90vh] overflow-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 z-10 bg-card border-b border-border p-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold">Выберите изображение</h2>
+                <p className="text-sm text-muted-foreground">Кликните на изображение чтобы добавить его в макет</p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setShowFileManager(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="p-4">
+              <FileManager 
+                filterTypes={['image/png', 'image/jpeg', 'image/webp', 'image/jpg']}
+                onAddToCanvas={handleAddFileToCanvas}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

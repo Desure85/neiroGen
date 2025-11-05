@@ -15,7 +15,7 @@ return [
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
-            'url' => env('APP_URL') . '/storage',
+            'url' => env('APP_URL').'/storage',
             'visibility' => 'public',
             'throw' => false,
         ],
@@ -29,6 +29,19 @@ return [
             'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT', env('MINIO_ENDPOINT')),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', true),
+            'throw' => false,
+        ],
+
+        'minio' => [
+            'driver' => 's3',
+            'key' => env('MINIO_ACCESS_KEY', 'minioadmin'),
+            'secret' => env('MINIO_SECRET_KEY', 'minioadmin'),
+            'region' => env('MINIO_REGION', 'us-east-1'),
+            'bucket' => env('MINIO_BUCKET', 'neirogen'),
+            'url' => env('MINIO_URL'),
+            'endpoint' => env('MINIO_ENDPOINT', 'http://minio:9000'),
+            'use_path_style_endpoint' => true,
+            'visibility' => 'public',
             'throw' => false,
         ],
     ],

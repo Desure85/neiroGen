@@ -82,7 +82,7 @@ class Exercise extends Model
                 'order' => $block->pivot->order,
                 'delay' => $block->pivot->delay,
                 'settings' => $block->pivot->settings ?? [],
-                'display_content' => $block->display_content
+                'display_content' => $block->display_content,
             ];
         });
     }
@@ -94,7 +94,7 @@ class Exercise extends Model
         return $this->contentBlocks()->attach($block->id, [
             'order' => $options['order'] ?? $maxOrder + 1,
             'settings' => $options['settings'] ?? [],
-            'delay' => $options['delay'] ?? 0
+            'delay' => $options['delay'] ?? 0,
         ]);
     }
 

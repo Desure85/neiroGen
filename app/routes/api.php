@@ -1,28 +1,29 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\SvgController;
-use App\Http\Controllers\Api\ExerciseController;
-use App\Http\Controllers\Api\ChildProgressController;
-use App\Http\Controllers\Api\ExerciseGeneratorController;
-use App\Http\Controllers\Api\AdaptiveExerciseController;
-use App\Http\Controllers\Api\ContentBlockController;
-use App\Http\Controllers\Api\ExerciseTypesController;
-use App\Http\Controllers\Api\ChildController;
 use App\Http\Controllers\Admin\ExerciseTypeController as AdminExerciseTypeController;
 use App\Http\Controllers\Admin\ExerciseTypeFieldController as AdminExerciseTypeFieldController;
-use App\Http\Controllers\Api\ExerciseSessionController;
-use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\ExerciseTemplateController;
-use App\Http\Controllers\Api\WorksheetController;
-use App\Http\Controllers\Api\WorksheetPresetController;
-use App\Http\Controllers\Api\WorksheetLayoutController;
-use App\Http\Controllers\Api\IntegrationController;
+use App\Http\Controllers\Api\AdaptiveExerciseController;
 use App\Http\Controllers\Api\AssignmentController;
-use App\Http\Controllers\Api\HealthController;
-use App\Http\Controllers\Api\ComfyPresetController;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ChildController;
+use App\Http\Controllers\Api\ChildProgressController;
 use App\Http\Controllers\Api\ComfyGenerationController;
+use App\Http\Controllers\Api\ComfyPresetController;
+use App\Http\Controllers\Api\ContentBlockController;
+use App\Http\Controllers\Api\ExerciseController;
+use App\Http\Controllers\Api\ExerciseGeneratorController;
+use App\Http\Controllers\Api\ExerciseSessionController;
+use App\Http\Controllers\Api\ExerciseTemplateController;
+use App\Http\Controllers\Api\ExerciseTypesController;
+use App\Http\Controllers\Api\HealthController;
+use App\Http\Controllers\Api\IntegrationController;
+use App\Http\Controllers\Api\WorksheetController;
+use App\Http\Controllers\Api\WorksheetLayoutController;
+use App\Http\Controllers\Api\WorksheetPresetController;
+use App\Http\Controllers\FileManagerController;
+use App\Http\Controllers\SvgController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -83,7 +84,6 @@ Route::prefix('generator/graphic-dictation')->group(function () {
     Route::post('/generate-commands', [\App\Http\Controllers\Api\GraphicDictationController::class, 'generateCommands']);
     Route::post('/create-template', [\App\Http\Controllers\Api\GraphicDictationController::class, 'createTemplate']);
 });
-
 
 // Adaptive exercise routes
 Route::prefix('adaptive')->group(function () {
@@ -156,6 +156,24 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Integrations
     Route::get('/integration/comfy/health', [IntegrationController::class, 'comfyHealth']);
+
+    // File Manager routes
+    Route::prefix('files')->group(function () {
+        Route::get('/', [FileManagerController::class, 'index']);
+        Route::get('/tree', [FileManagerController::class, 'tree']);
+        Route::post('/folders', [FileManagerController::class, 'createFolder']);
+        Route::post('/upload', [FileManagerController::class, 'upload']);
+        Route::delete('/{id}', [FileManagerController::class, 'destroy']);
+        Route::patch('/{id}/move', [FileManagerController::class, 'move']);
+        Route::patch('/{id}/rename', [FileManagerController::class, 'rename']);
+        
+        // Tags
+        Route::post('/{id}/tags', [FileManagerController::class, 'addTag']);
+        Route::delete('/{id}/tags/{tag}', [FileManagerController::class, 'removeTag']);
+        Route::get('/tags', [FileManagerController::class, 'allTags']);
+        Route::get('/tags/popular', [FileManagerController::class, 'popularTags']);
+        Route::get('/tags/search', [FileManagerController::class, 'searchTags']);
+    });
 });
 
 // ComfyUI Presets

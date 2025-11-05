@@ -21,7 +21,7 @@ return new class extends Migration
             $table->date('due_date')->nullable()->index();
             $table->json('meta')->nullable();
             $table->timestamps();
-            
+
             $table->index(['tenant_id', 'status']);
         });
     }

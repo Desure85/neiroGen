@@ -13,8 +13,9 @@ class IntegrationController extends Controller
         $url = rtrim((string) config('services.comfyui.url', env('COMFYUI_URL', 'http://localhost:8188')), '/');
         try {
             $resp = Http::timeout((int) config('services.comfyui.timeout', 3))
-                ->get($url . '/');
+                ->get($url.'/');
             $ok = $resp->successful();
+
             return response()->json([
                 'ok' => $ok,
                 'status' => $resp->status(),

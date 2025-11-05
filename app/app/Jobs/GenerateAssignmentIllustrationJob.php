@@ -15,11 +15,12 @@ class GenerateAssignmentIllustrationJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $assignmentId;
+
     /** @var array<string,mixed> */
     public array $payload;
 
     /**
-     * @param array<string,mixed> $payload
+     * @param  array<string,mixed>  $payload
      */
     public function __construct(int $assignmentId, array $payload)
     {
@@ -33,7 +34,7 @@ class GenerateAssignmentIllustrationJob implements ShouldQueue
         $result = $comfy->requestGeneration($this->payload);
 
         $assignment = Assignment::find($this->assignmentId);
-        if (!$assignment) {
+        if (! $assignment) {
             return;
         }
         $meta = $assignment->meta ?? [];

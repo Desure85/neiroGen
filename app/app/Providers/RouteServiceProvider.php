@@ -31,11 +31,13 @@ class RouteServiceProvider extends ServiceProvider
         // Stricter rate limiters for auth endpoints
         RateLimiter::for('auth-login', function (Request $request) {
             $email = (string) $request->input('email');
+
             return Limit::perMinute(10)->by($request->ip().'|'.$email);
         });
 
         RateLimiter::for('auth-register', function (Request $request) {
             $email = (string) $request->input('email');
+
             return Limit::perMinute(5)->by($request->ip().'|'.$email);
         });
 

@@ -22,7 +22,7 @@ class ExerciseTypeController extends Controller
             ->when(! $request->boolean('show_inactive', false), fn (Builder $builder) => $builder->where('is_active', true))
             ->when($request->filled('domain'), fn (Builder $builder) => $builder->where('domain', $request->string('domain')->trim()))
             ->when($request->filled('search'), function (Builder $builder) use ($request) {
-                $term = '%' . str_replace('%', '', $request->string('search')->trim()) . '%';
+                $term = '%'.str_replace('%', '', $request->string('search')->trim()).'%';
 
                 $builder->where(function (Builder $nested) use ($term) {
                     $nested

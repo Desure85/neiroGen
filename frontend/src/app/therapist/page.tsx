@@ -25,6 +25,7 @@ import {
 } from "lucide-react"
 import { ExerciseGenerator, ExercisePlayer, ContentBlockManager } from "@/components/exercise-components"
 import { ExerciseConstructor } from "@/components/exercise-constructor"
+import { FileManager } from "@/components/file-manager"
 import { useI18n } from "@/components/localization"
 import { cn } from "@/lib/utils"
 import { apiFetch } from "@/lib/api"
@@ -125,8 +126,8 @@ function TherapistDashboardContent() {
     { value: 'generator', label: t('tab_generator') },
     { value: 'constructor', label: t('tab_constructor') },
     { value: 'blocks', label: t('tab_blocks') },
+    { value: 'files', label: 'Файлы' },
     { value: 'sessions', label: t('tab_sessions') },
-    { value: 'comfy', label: 'ComfyUI' },
   ]
 
   // ComfyUI presets state
@@ -771,87 +772,6 @@ function TherapistDashboardContent() {
             </SectionCard>
           </TabsContent>
 
-          <TabsContent value="comfy" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Генерация через ComfyUI пресет</CardTitle>
-                <CardDescription>Выберите пресет и параметры. Переменные с одинаковыми именами подставятся в граф</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {comfyLoading ? (
-                  <div className="text-sm text-muted-foreground">Загрузка пресетов…</div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <label htmlFor="comfy-preset" className="block text-sm mb-1">Пресет</label>
-                        <select
-                          id="comfy-preset"
-                          className="w-full p-2 border rounded bg-background text-foreground"
-                          value={selectedPresetId || ''}
-                          onChange={(e) => {
-                            const id = Number(e.target.value)
-                            setSelectedPresetId(id)
-                            const p = comfyPresets.find(pp => pp.id === id)
-                            if (p) {
-                              const d = p.defaults || {}
-                              setComfyVars(prev => ({ ...prev, ...d }))
-                            }
-                          }}
-                        >
-                          <option value="" disabled>Выберите пресет…</option>
-                          {comfyPresets.map(p => (
-                            <option key={p.id} value={p.id}>{p.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label htmlFor="comfy-width" className="block text-sm mb-1">Ширина</label>
-                        <input id="comfy-width" type="number" className="w-full p-2 border rounded bg-background text-foreground" value={comfyVars.width}
-                          onChange={(e) => setComfyVars(v => ({ ...v, width: Number(e.target.value || 0) }))} />
-                      </div>
-                      <div>
-                        <label htmlFor="comfy-height" className="block text-sm mb-1">Высота</label>
-                        <input id="comfy-height" type="number" className="w-full p-2 border rounded bg-background text-foreground" value={comfyVars.height}
-                          onChange={(e) => setComfyVars(v => ({ ...v, height: Number(e.target.value || 0) }))} />
-                      </div>
-                    </div>
-                    <div>
-                      <label htmlFor="comfy-prompt" className="block text-sm mb-1">Промпт</label>
-                      <textarea id="comfy-prompt" className="w-full p-2 border rounded bg-background text-foreground" rows={3} value={comfyVars.prompt}
-                        onChange={(e) => setComfyVars(v => ({ ...v, prompt: e.target.value }))} />
-                    </div>
-                    <div className="text-right">
-                      <Button
-                        disabled={!selectedPresetId}
-                        onClick={async () => {
-                          try {
-                            setComfyError(null)
-                            const res = await generateWithPreset(Number(selectedPresetId), comfyVars)
-                            setComfyResult(res)
-                          } catch (e: any) {
-                            setComfyError('Ошибка генерации: ' + (e?.message || e))
-                          }
-                        }}
-                      >
-                        Сгенерировать
-                      </Button>
-                    </div>
-                    {comfyResult && (
-                      <div className="text-sm text-muted-foreground">
-                        Результат: {JSON.stringify(comfyResult)}
-                      </div>
-                    )}
-                    {comfyError && (
-                      <div role="alert" className="text-sm text-red-600">
-                        {comfyError}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
           <TabsContent value="children" className="space-y-6">
             {/* Поиск и фильтры */}
             <Card>
@@ -1043,6 +963,28 @@ function TherapistDashboardContent() {
             <ContentBlockManager />
           </TabsContent>
 
+          <TabsContent value="files" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Файловый менеджер</CardTitle>
+                <CardDescription>
+                  Управление изображениями и файлами для упражнений
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <FileManager 
+                  filterTypes={['image/png', 'image/jpeg', 'image/webp', 'image/jpg']}
+                  onFileSelect={(file) => {
+                    toast({
+                      title: '✅ Файл выбран',
+                      description: `«${file.name}» можно использовать в упражнениях`,
+                    })
+                  }}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="sessions" className="space-y-6">
             {/* Create Session Card */}
             <Card className="border-2 border-blue-200 bg-blue-50/30">
@@ -1058,7 +1000,13 @@ function TherapistDashboardContent() {
                     </CardDescription>
                   </div>
                   {!showCreateSession && (
-                    <Button onClick={() => setShowCreateSession(true)}>
+                    <Button onClick={() => {
+                      setShowCreateSession(true)
+                      // Автоматически заполняем ребенка если он уже выбран
+                      if (selectedChild) {
+                        setSessionChildId(selectedChild.id)
+                      }
+                    }}>
                       <Plus className="h-4 w-4 mr-2" />
                       Создать
                     </Button>
@@ -1069,19 +1017,35 @@ function TherapistDashboardContent() {
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium mb-2">Выберите ребёнка</label>
-                      <select
-                        className="w-full p-2 border rounded bg-background"
-                        value={sessionChildId || ''}
-                        onChange={(e) => setSessionChildId(Number(e.target.value) || null)}
-                      >
-                        <option value="">-- Выберите --</option>
-                        {children.map((child) => (
-                          <option key={child.id} value={child.id}>
-                            {child.avatar} {child.name}
-                          </option>
-                        ))}
-                      </select>
+                      <label className="block text-sm font-medium mb-2">Ребёнок</label>
+                      {sessionChildId && children.find(c => c.id === sessionChildId) ? (
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 flex items-center gap-2 p-2 border rounded bg-muted">
+                            <span className="text-lg">{children.find(c => c.id === sessionChildId)?.avatar}</span>
+                            <span className="font-medium">{children.find(c => c.id === sessionChildId)?.name}</span>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSessionChildId(null)}
+                          >
+                            Изменить
+                          </Button>
+                        </div>
+                      ) : (
+                        <select
+                          className="w-full p-2 border rounded bg-background"
+                          value={sessionChildId || ''}
+                          onChange={(e) => setSessionChildId(Number(e.target.value) || null)}
+                        >
+                          <option value="">-- Выберите --</option>
+                          {children.map((child) => (
+                            <option key={child.id} value={child.id}>
+                              {child.avatar} {child.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-2">Упражнение (опционально)</label>

@@ -24,7 +24,7 @@ return [
             'description' => 'Запоминание звуковых последовательностей, слов.',
             'schema' => [
                 'sequence_length' => ['type' => 'integer', 'min' => 2, 'max' => 9, 'default' => 4],
-                'items_domain' => ['type' => 'enum', 'values' => ['digits','words','tones'], 'default' => 'digits'],
+                'items_domain' => ['type' => 'enum', 'values' => ['digits', 'words', 'tones'], 'default' => 'digits'],
                 'playback_speed' => ['type' => 'integer', 'min' => 50, 'max' => 300, 'default' => 120],
             ],
         ],
@@ -44,8 +44,8 @@ return [
             'icon' => '🔎',
             'description' => 'Выбор целевых стимулов среди отвлекающих',
             'schema' => [
-                'distractors' => ['type' => 'integer','min'=>0,'max'=>50,'default'=>10],
-                'targets' => ['type' => 'integer','min'=>1,'max'=>20,'default'=>5],
+                'distractors' => ['type' => 'integer', 'min' => 0, 'max' => 50, 'default' => 10],
+                'targets' => ['type' => 'integer', 'min' => 1, 'max' => 20, 'default' => 5],
             ],
         ],
         'spatial_perception' => [
@@ -54,8 +54,8 @@ return [
             'icon' => '🧭',
             'description' => 'Ориентация в пространственных отношениях',
             'schema' => [
-                'grid' => ['type'=>'enum','values'=>['2x2','3x3','4x4'],'default'=>'3x3'],
-                'transformations' => ['type'=>'array_enum','values'=>['rotate','mirror','flip'], 'default'=>['rotate']],
+                'grid' => ['type' => 'enum', 'values' => ['2x2', '3x3', '4x4'], 'default' => '3x3'],
+                'transformations' => ['type' => 'array_enum', 'values' => ['rotate', 'mirror', 'flip'], 'default' => ['rotate']],
             ],
         ],
         'visual_search' => [
@@ -64,9 +64,9 @@ return [
             'icon' => '🔍',
             'description' => 'Поиск целевых элементов среди множества',
             'schema' => [
-                'elements' => ['type'=>'integer','min'=>10,'max'=>200,'default'=>60],
-                'targets' => ['type'=>'integer','min'=>1,'max'=>10,'default'=>3],
-                'time_limit_sec' => ['type'=>'integer','min'=>0,'max'=>600,'default'=>0],
+                'elements' => ['type' => 'integer', 'min' => 10, 'max' => 200, 'default' => 60],
+                'targets' => ['type' => 'integer', 'min' => 1, 'max' => 10, 'default' => 3],
+                'time_limit_sec' => ['type' => 'integer', 'min' => 0, 'max' => 600, 'default' => 0],
             ],
         ],
         'working_memory' => [
@@ -75,8 +75,8 @@ return [
             'icon' => '🧠',
             'description' => 'Удержание и манипуляция информацией',
             'schema' => [
-                'n_back' => ['type'=>'integer','min'=>1,'max'=>3,'default'=>1],
-                'modality' => ['type'=>'enum','values'=>['visual','auditory','mixed'],'default'=>'visual'],
+                'n_back' => ['type' => 'integer', 'min' => 1, 'max' => 3, 'default' => 1],
+                'modality' => ['type' => 'enum', 'values' => ['visual', 'auditory', 'mixed'], 'default' => 'visual'],
             ],
         ],
         'executive_planning' => [
@@ -85,8 +85,8 @@ return [
             'icon' => '🗺️',
             'description' => 'Планирование шагов для решения задачи',
             'schema' => [
-                'steps' => ['type'=>'integer','min'=>2,'max'=>10,'default'=>4],
-                'branching' => ['type'=>'boolean','default'=>false],
+                'steps' => ['type' => 'integer', 'min' => 2, 'max' => 10, 'default' => 4],
+                'branching' => ['type' => 'boolean', 'default' => false],
             ],
         ],
         'inhibition_control' => [
@@ -95,8 +95,8 @@ return [
             'icon' => '🛑',
             'description' => 'Задания на подавление импульсивного ответа (Go/NoGo)',
             'schema' => [
-                'go_probability' => ['type'=>'number','min'=>0,'max'=>1,'default'=>0.7],
-                'trials' => ['type'=>'integer','min'=>10,'max'=>200,'default'=>60],
+                'go_probability' => ['type' => 'number', 'min' => 0, 'max' => 1, 'default' => 0.7],
+                'trials' => ['type' => 'integer', 'min' => 10, 'max' => 200, 'default' => 60],
             ],
         ],
         'cognitive_flexibility' => [
@@ -105,8 +105,8 @@ return [
             'icon' => '🔀',
             'description' => 'Переключение правила/стимула (set-shifting)',
             'schema' => [
-                'switch_frequency' => ['type'=>'integer','min'=>1,'max'=>20,'default'=>5],
-                'stimuli' => ['type'=>'enum','values'=>['shapes','colors','numbers'],'default'=>'colors'],
+                'switch_frequency' => ['type' => 'integer', 'min' => 1, 'max' => 20, 'default' => 5],
+                'stimuli' => ['type' => 'enum', 'values' => ['shapes', 'colors', 'numbers'], 'default' => 'colors'],
             ],
         ],
         'phoneme_discrimination' => [
@@ -115,8 +115,8 @@ return [
             'icon' => '🔊',
             'description' => 'Отличать схожие звуки речи',
             'schema' => [
-                'pairs' => ['type'=>'integer','min'=>5,'max'=>50,'default'=>10],
-                'contrast' => ['type'=>'enum','values'=>['place','manner','voicing'],'default'=>'voicing'],
+                'pairs' => ['type' => 'integer', 'min' => 5, 'max' => 50, 'default' => 10],
+                'contrast' => ['type' => 'enum', 'values' => ['place', 'manner', 'voicing'], 'default' => 'voicing'],
             ],
         ],
         'syllable_blending' => [
@@ -125,8 +125,8 @@ return [
             'icon' => '🗣️',
             'description' => 'Собрать слово из слогов',
             'schema' => [
-                'word_length' => ['type'=>'integer','min'=>2,'max'=>6,'default'=>3],
-                'syllables_bank' => ['type'=>'enum','values'=>['simple','mixed'],'default'=>'simple'],
+                'word_length' => ['type' => 'integer', 'min' => 2, 'max' => 6, 'default' => 3],
+                'syllables_bank' => ['type' => 'enum', 'values' => ['simple', 'mixed'], 'default' => 'simple'],
             ],
         ],
         'sound_letter_mapping' => [
@@ -135,8 +135,8 @@ return [
             'icon' => '🔤',
             'description' => 'Соотнесение звуков и букв',
             'schema' => [
-                'alphabet' => ['type'=>'enum','values'=>['ru','en'],'default'=>'ru'],
-                'items' => ['type'=>'integer','min'=>5,'max'=>50,'default'=>10],
+                'alphabet' => ['type' => 'enum', 'values' => ['ru', 'en'], 'default' => 'ru'],
+                'items' => ['type' => 'integer', 'min' => 5, 'max' => 50, 'default' => 10],
             ],
         ],
         'articulation_gymnastics' => [
@@ -145,8 +145,8 @@ return [
             'icon' => '👅',
             'description' => 'Движения артикуляционного аппарата',
             'schema' => [
-                'movements' => ['type'=>'array_enum','values'=>['tongue_up','tongue_down','lip_rounding','smile'],'default'=>['tongue_up']],
-                'tempo' => ['type'=>'enum','values'=>['slow','normal','fast'],'default'=>'normal'],
+                'movements' => ['type' => 'array_enum', 'values' => ['tongue_up', 'tongue_down', 'lip_rounding', 'smile'], 'default' => ['tongue_up']],
+                'tempo' => ['type' => 'enum', 'values' => ['slow', 'normal', 'fast'], 'default' => 'normal'],
             ],
         ],
         'rhythm_tapping' => [
@@ -155,8 +155,8 @@ return [
             'icon' => '🥁',
             'description' => 'Воспроизведение ритмических паттернов',
             'schema' => [
-                'bpm' => ['type'=>'integer','min'=>40,'max'=>200,'default'=>90],
-                'pattern_complexity' => ['type'=>'enum','values'=>['easy','medium','hard'],'default'=>'easy'],
+                'bpm' => ['type' => 'integer', 'min' => 40, 'max' => 200, 'default' => 90],
+                'pattern_complexity' => ['type' => 'enum', 'values' => ['easy', 'medium', 'hard'], 'default' => 'easy'],
             ],
         ],
         'sequence_ordering' => [
@@ -165,8 +165,8 @@ return [
             'icon' => '🔢',
             'description' => 'Упорядочить карточки по логике',
             'schema' => [
-                'items' => ['type'=>'integer','min'=>3,'max'=>12,'default'=>5],
-                'theme' => ['type'=>'enum','values'=>['daily','seasonal','story'],'default'=>'story'],
+                'items' => ['type' => 'integer', 'min' => 3, 'max' => 12, 'default' => 5],
+                'theme' => ['type' => 'enum', 'values' => ['daily', 'seasonal', 'story'], 'default' => 'story'],
             ],
         ],
         'category_sorting' => [
@@ -175,8 +175,8 @@ return [
             'icon' => '🗂️',
             'description' => 'Разложить по категориям',
             'schema' => [
-                'categories' => ['type'=>'integer','min'=>2,'max'=>6,'default'=>3],
-                'items' => ['type'=>'integer','min'=>6,'max'=>60,'default'=>12],
+                'categories' => ['type' => 'integer', 'min' => 2, 'max' => 6, 'default' => 3],
+                'items' => ['type' => 'integer', 'min' => 6, 'max' => 60, 'default' => 12],
             ],
         ],
         'logic_matrices' => [
@@ -185,8 +185,8 @@ return [
             'icon' => '🧩',
             'description' => 'Завершить матрицу по правилу',
             'schema' => [
-                'size' => ['type'=>'enum','values'=>['2x2','3x3'],'default'=>'3x3'],
-                'rules' => ['type'=>'array_enum','values'=>['shape','color','count','rotation'],'default'=>['shape','color']],
+                'size' => ['type' => 'enum', 'values' => ['2x2', '3x3'], 'default' => '3x3'],
+                'rules' => ['type' => 'array_enum', 'values' => ['shape', 'color', 'count', 'rotation'], 'default' => ['shape', 'color']],
             ],
         ],
         'trail_making' => [
@@ -195,8 +195,8 @@ return [
             'icon' => '🧵',
             'description' => 'Соединить точки по порядку/правилу',
             'schema' => [
-                'mode' => ['type'=>'enum','values'=>['A','B'],'default'=>'A'],
-                'points' => ['type'=>'integer','min'=>10,'max'=>60,'default'=>25],
+                'mode' => ['type' => 'enum', 'values' => ['A', 'B'], 'default' => 'A'],
+                'points' => ['type' => 'integer', 'min' => 10, 'max' => 60, 'default' => 25],
             ],
         ],
         'pattern_copying' => [
@@ -205,8 +205,8 @@ return [
             'icon' => '📐',
             'description' => 'Воспроизвести образец',
             'schema' => [
-                'library' => ['type'=>'enum','values'=>['basic','advanced'],'default'=>'basic'],
-                'attempts' => ['type'=>'integer','min'=>1,'max'=>5,'default'=>2],
+                'library' => ['type' => 'enum', 'values' => ['basic', 'advanced'], 'default' => 'basic'],
+                'attempts' => ['type' => 'integer', 'min' => 1, 'max' => 5, 'default' => 2],
             ],
         ],
         'graphic_dictation' => [
@@ -229,8 +229,8 @@ return [
             'icon' => '🗃️',
             'description' => 'Назвать как можно больше слов по категории',
             'schema' => [
-                'category' => ['type'=>'enum','values'=>['animals','fruits','transport'],'default'=>'animals'],
-                'time_sec' => ['type'=>'integer','min'=>10,'max'=>180,'default'=>60],
+                'category' => ['type' => 'enum', 'values' => ['animals', 'fruits', 'transport'], 'default' => 'animals'],
+                'time_sec' => ['type' => 'integer', 'min' => 10, 'max' => 180, 'default' => 60],
             ],
         ],
         'phonemic_fluency' => [
@@ -239,8 +239,8 @@ return [
             'icon' => '🔡',
             'description' => 'Слова на заданный звук/букву',
             'schema' => [
-                'letter' => ['type'=>'string','default'=>'С'],
-                'time_sec' => ['type'=>'integer','min'=>10,'max'=>180,'default'=>60],
+                'letter' => ['type' => 'string', 'default' => 'С'],
+                'time_sec' => ['type' => 'integer', 'min' => 10, 'max' => 180, 'default' => 60],
             ],
         ],
         'story_recall' => [
@@ -249,8 +249,8 @@ return [
             'icon' => '📖',
             'description' => 'Воспроизвести рассказ',
             'schema' => [
-                'length' => ['type'=>'enum','values'=>['short','medium','long'],'default'=>'short'],
-                'cues' => ['type'=>'boolean','default'=>true],
+                'length' => ['type' => 'enum', 'values' => ['short', 'medium', 'long'], 'default' => 'short'],
+                'cues' => ['type' => 'boolean', 'default' => true],
             ],
         ],
         'visual_motor_integration' => [
@@ -259,8 +259,8 @@ return [
             'icon' => '✍️',
             'description' => 'Координация зрения и движения',
             'schema' => [
-                'trace_paths' => ['type'=>'boolean','default'=>true],
-                'complexity' => ['type'=>'enum','values'=>['easy','medium','hard'],'default'=>'medium'],
+                'trace_paths' => ['type' => 'boolean', 'default' => true],
+                'complexity' => ['type' => 'enum', 'values' => ['easy', 'medium', 'hard'], 'default' => 'medium'],
             ],
         ],
         'emotional_recognition' => [
@@ -269,8 +269,8 @@ return [
             'icon' => '🙂',
             'description' => 'Определить эмоции по лицам/ситуациям',
             'schema' => [
-                'set' => ['type'=>'enum','values'=>['basic','extended'],'default'=>'basic'],
-                'distractors' => ['type'=>'integer','min'=>0,'max'=>10,'default'=>2],
+                'set' => ['type' => 'enum', 'values' => ['basic', 'extended'], 'default' => 'basic'],
+                'distractors' => ['type' => 'integer', 'min' => 0, 'max' => 10, 'default' => 2],
             ],
         ],
         'pattern_completion' => [
@@ -279,8 +279,8 @@ return [
             'icon' => '🧩',
             'description' => 'Догадаться, что идёт дальше',
             'schema' => [
-                'sequence_len' => ['type'=>'integer','min'=>3,'max'=>12,'default'=>5],
-                'domains' => ['type'=>'array_enum','values'=>['shapes','numbers','colors'],'default'=>['numbers']],
+                'sequence_len' => ['type' => 'integer', 'min' => 3, 'max' => 12, 'default' => 5],
+                'domains' => ['type' => 'array_enum', 'values' => ['shapes', 'numbers', 'colors'], 'default' => ['numbers']],
             ],
         ],
         'sound_localization' => [
@@ -289,8 +289,8 @@ return [
             'icon' => '📡',
             'description' => 'Определить направление/источник звука',
             'schema' => [
-                'channels' => ['type'=>'integer','min'=>2,'max'=>8,'default'=>2],
-                'trials' => ['type'=>'integer','min'=>10,'max'=>100,'default'=>30],
+                'channels' => ['type' => 'integer', 'min' => 2, 'max' => 8, 'default' => 2],
+                'trials' => ['type' => 'integer', 'min' => 10, 'max' => 100, 'default' => 30],
             ],
         ],
         'picture_sequences' => [
@@ -299,8 +299,8 @@ return [
             'icon' => '🖼️',
             'description' => 'Собрать историю из картинок',
             'schema' => [
-                'items' => ['type'=>'integer','min'=>3,'max'=>10,'default'=>4],
-                'theme' => ['type'=>'enum','values'=>['daily','fairy','custom'],'default'=>'daily'],
+                'items' => ['type' => 'integer', 'min' => 3, 'max' => 10, 'default' => 4],
+                'theme' => ['type' => 'enum', 'values' => ['daily', 'fairy', 'custom'], 'default' => 'daily'],
             ],
         ],
 
@@ -311,9 +311,9 @@ return [
             'icon' => '🎟️',
             'description' => 'Подкрепление желательного поведения жетонами',
             'schema' => [
-                'target_behaviors' => ['type'=>'integer','min'=>1,'max'=>5,'default'=>1],
-                'tokens_per_reward' => ['type'=>'integer','min'=>1,'max'=>50,'default'=>5],
-                'session_length_min' => ['type'=>'integer','min'=>5,'max'=>60,'default'=>15],
+                'target_behaviors' => ['type' => 'integer', 'min' => 1, 'max' => 5, 'default' => 1],
+                'tokens_per_reward' => ['type' => 'integer', 'min' => 1, 'max' => 50, 'default' => 5],
+                'session_length_min' => ['type' => 'integer', 'min' => 5, 'max' => 60, 'default' => 15],
             ],
         ],
         'dtt_discrete_trial' => [
@@ -322,9 +322,9 @@ return [
             'icon' => '🧪',
             'description' => 'Обучение навыкам через серию структурированных проб',
             'schema' => [
-                'trials' => ['type'=>'integer','min'=>5,'max'=>200,'default'=>20],
-                'prompt_level' => ['type'=>'enum','values'=>['none','gestural','model','verbal','physical'],'default'=>'verbal'],
-                'reinforcement' => ['type'=>'enum','values'=>['fixed','variable'],'default'=>'fixed'],
+                'trials' => ['type' => 'integer', 'min' => 5, 'max' => 200, 'default' => 20],
+                'prompt_level' => ['type' => 'enum', 'values' => ['none', 'gestural', 'model', 'verbal', 'physical'], 'default' => 'verbal'],
+                'reinforcement' => ['type' => 'enum', 'values' => ['fixed', 'variable'], 'default' => 'fixed'],
             ],
         ],
         'shaping' => [
@@ -333,8 +333,8 @@ return [
             'icon' => '🧱',
             'description' => 'Постепенное приближение к целевому поведению',
             'schema' => [
-                'steps' => ['type'=>'integer','min'=>2,'max'=>20,'default'=>5],
-                'criteria' => ['type'=>'enum','values'=>['accuracy','latency','duration'],'default'=>'accuracy'],
+                'steps' => ['type' => 'integer', 'min' => 2, 'max' => 20, 'default' => 5],
+                'criteria' => ['type' => 'enum', 'values' => ['accuracy', 'latency', 'duration'], 'default' => 'accuracy'],
             ],
         ],
         'chaining' => [
@@ -343,8 +343,8 @@ return [
             'icon' => '⛓️',
             'description' => 'Освоение последовательности навыков по шагам',
             'schema' => [
-                'chain_type' => ['type'=>'enum','values'=>['forward','backward','total'],'default'=>'forward'],
-                'steps' => ['type'=>'integer','min'=>2,'max'=>15,'default'=>6],
+                'chain_type' => ['type' => 'enum', 'values' => ['forward', 'backward', 'total'], 'default' => 'forward'],
+                'steps' => ['type' => 'integer', 'min' => 2, 'max' => 15, 'default' => 6],
             ],
         ],
         'matching_to_sample' => [
@@ -353,8 +353,8 @@ return [
             'icon' => '🧩',
             'description' => 'Выбор соответствующего стимулу образца',
             'schema' => [
-                'comparison_stimuli' => ['type'=>'integer','min'=>2,'max'=>6,'default'=>3],
-                'delay_ms' => ['type'=>'integer','min'=>0,'max'=>5000,'default'=>0],
+                'comparison_stimuli' => ['type' => 'integer', 'min' => 2, 'max' => 6, 'default' => 3],
+                'delay_ms' => ['type' => 'integer', 'min' => 0, 'max' => 5000, 'default' => 0],
             ],
         ],
         'differential_reinforcement' => [
@@ -363,8 +363,8 @@ return [
             'icon' => '🎯',
             'description' => 'DRA/DRI/DRL техники снижения нежелательного поведения',
             'schema' => [
-                'procedure' => ['type'=>'enum','values'=>['DRA','DRI','DRL'],'default'=>'DRA'],
-                'interval_sec' => ['type'=>'integer','min'=>5,'max'=>600,'default'=>60],
+                'procedure' => ['type' => 'enum', 'values' => ['DRA', 'DRI', 'DRL'], 'default' => 'DRA'],
+                'interval_sec' => ['type' => 'integer', 'min' => 5, 'max' => 600, 'default' => 60],
             ],
         ],
         'functional_communication_training' => [
@@ -373,8 +373,8 @@ return [
             'icon' => '💬',
             'description' => 'Замещение проблемного поведения коммуникативным',
             'schema' => [
-                'modality' => ['type'=>'enum','values'=>['verbal','gesture','aac'],'default'=>'verbal'],
-                'prompt_fading' => ['type'=>'boolean','default'=>true],
+                'modality' => ['type' => 'enum', 'values' => ['verbal', 'gesture', 'aac'], 'default' => 'verbal'],
+                'prompt_fading' => ['type' => 'boolean', 'default' => true],
             ],
         ],
         'social_stories' => [
@@ -383,8 +383,8 @@ return [
             'icon' => '📘',
             'description' => 'Обучение социальным сценариям через истории',
             'schema' => [
-                'length' => ['type'=>'enum','values'=>['short','medium','long'],'default'=>'short'],
-                'pictograms' => ['type'=>'boolean','default'=>true],
+                'length' => ['type' => 'enum', 'values' => ['short', 'medium', 'long'], 'default' => 'short'],
+                'pictograms' => ['type' => 'boolean', 'default' => true],
             ],
         ],
         'emotion_regulation' => [
@@ -393,8 +393,8 @@ return [
             'icon' => '🧘',
             'description' => 'Навыки саморегуляции, дыхание/пауза/переключение',
             'schema' => [
-                'techniques' => ['type'=>'array_enum','values'=>['breathing','pause','grounding'],'default'=>['breathing']],
-                'duration_sec' => ['type'=>'integer','min'=>30,'max'=>600,'default'=>120],
+                'techniques' => ['type' => 'array_enum', 'values' => ['breathing', 'pause', 'grounding'], 'default' => ['breathing']],
+                'duration_sec' => ['type' => 'integer', 'min' => 30, 'max' => 600, 'default' => 120],
             ],
         ],
         'self_monitoring' => [
@@ -403,8 +403,8 @@ return [
             'icon' => '📝',
             'description' => 'Отслеживание собственного поведения по чек-листу',
             'schema' => [
-                'checklist_items' => ['type'=>'integer','min'=>3,'max'=>20,'default'=>5],
-                'interval_sec' => ['type'=>'integer','min'=>30,'max'=>900,'default'=>120],
+                'checklist_items' => ['type' => 'integer', 'min' => 3, 'max' => 20, 'default' => 5],
+                'interval_sec' => ['type' => 'integer', 'min' => 30, 'max' => 900, 'default' => 120],
             ],
         ],
     ],

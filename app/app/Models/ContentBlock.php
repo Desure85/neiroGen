@@ -18,7 +18,7 @@ class ContentBlock extends Model
         'settings',
         'is_template',
         'created_by',
-        'tenant_id'
+        'tenant_id',
     ];
 
     protected $casts = [
@@ -26,7 +26,7 @@ class ContentBlock extends Model
         'metadata' => 'array',
         'settings' => 'array',
         'is_template' => 'boolean',
-        'tenant_id' => 'integer'
+        'tenant_id' => 'integer',
     ];
 
     const TYPES = [
@@ -37,7 +37,7 @@ class ContentBlock extends Model
         'interactive' => 'Интерактивный элемент',
         'drawing' => 'Рисование',
         'choice' => 'Выбор ответа',
-        'sequence' => 'Последовательность'
+        'sequence' => 'Последовательность',
     ];
 
     const INTERACTIVE_TYPES = [
@@ -47,7 +47,7 @@ class ContentBlock extends Model
         'sentence_building' => 'Составь предложение',
         'rhythm_tapping' => 'Ритмичное постукивание',
         'memory_cards' => 'Карточки памяти',
-        'phoneme_discrimination' => 'Различение фонем'
+        'phoneme_discrimination' => 'Различение фонем',
     ];
 
     public function exercises(): BelongsToMany
@@ -77,7 +77,7 @@ class ContentBlock extends Model
 
     public function getDisplayContentAttribute()
     {
-        return match($this->type) {
+        return match ($this->type) {
             'text' => $this->content['text'] ?? '',
             'image' => $this->content['url'] ?? $this->content['path'] ?? '',
             'audio' => $this->content['url'] ?? $this->content['path'] ?? '',
@@ -92,7 +92,7 @@ class ContentBlock extends Model
 
     private function getInteractiveDisplay($content)
     {
-        return match($content['interactive_type'] ?? '') {
+        return match ($content['interactive_type'] ?? '') {
             'listen_repeat' => '🔊 Слушай и повторяй',
             'sound_recognition' => '🎯 Распознай звук',
             'word_completion' => '📝 Дополни слово',

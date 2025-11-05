@@ -16,7 +16,7 @@ final class ComfyGenerationController extends Controller
 {
     public function generate(Request $request, ComfyPreset $comfyPreset): JsonResponse
     {
-        if (!$comfyPreset->enabled) {
+        if (! $comfyPreset->enabled) {
             return response()->json(['ok' => false, 'error' => 'preset_disabled'], 400);
         }
 
@@ -37,9 +37,10 @@ final class ComfyGenerationController extends Controller
             'prompt' => $resolved,
         ];
         $resp = $client->prompt($payload);
-        if (!($resp['ok'] ?? false)) {
+        if (! ($resp['ok'] ?? false)) {
             return response()->json(['ok' => false, 'error' => $resp['error'] ?? 'unknown_error', 'upstream' => $resp['body'] ?? null], 502);
         }
+
         return response()->json(['ok' => true, 'preset_id' => $comfyPreset->id, 'prompt_id' => $resp['prompt_id'] ?? null]);
     }
 }

@@ -29,7 +29,7 @@ class WorksheetAsyncTest extends TestCase
         Sanctum::actingAs($user);
 
         $payload = [
-            'exercise_ids' => [1,2,3],
+            'exercise_ids' => [1, 2, 3],
             'format' => 'A4',
             'copies' => 2,
         ];
@@ -43,7 +43,7 @@ class WorksheetAsyncTest extends TestCase
             ]);
 
         Bus::assertDispatched(GenerateWorksheetJob::class, function (GenerateWorksheetJob $job) {
-            return $job->exerciseIds === [1,2,3]
+            return $job->exerciseIds === [1, 2, 3]
                 && strtoupper($job->format) === 'A4'
                 && $job->copies === 2;
         });

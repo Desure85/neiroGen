@@ -15,6 +15,8 @@ RUN apk add --no-cache \
     libjpeg-turbo-dev \
     freetype-dev \
     && docker-php-ext-install pdo_pgsql mbstring exif pcntl bcmath gd zip sockets \
+    && pecl install pcov \
+    && docker-php-ext-enable pcov \
     && apk del --no-cache $PHPIZE_DEPS || true
 
 # Install Composer

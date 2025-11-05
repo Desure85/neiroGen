@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Services\AdaptiveExerciseService;
 use App\Models\User;
-use Illuminate\Http\Request;
+use App\Services\AdaptiveExerciseService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class AdaptiveExerciseController extends Controller
 {
@@ -26,13 +26,13 @@ class AdaptiveExerciseController extends Controller
             'count' => 'integer|min:1|max:10',
             'session_length' => 'integer|min:5|max:60',
             'focus_areas' => 'array',
-            'focus_areas.*' => 'string|in:pronunciation,articulation,rhythm,memory'
+            'focus_areas.*' => 'string|in:pronunciation,articulation,rhythm,memory',
         ]);
 
         $count = $validated['count'] ?? 5;
         $sessionParams = [
             'length' => $validated['session_length'] ?? 20,
-            'focus_areas' => $validated['focus_areas'] ?? null
+            'focus_areas' => $validated['focus_areas'] ?? null,
         ];
 
         $exercises = $this->adaptiveService->generateAdaptiveExercises($child, $count);
@@ -41,14 +41,14 @@ class AdaptiveExerciseController extends Controller
             'child_id' => $child->id,
             'child_age_group' => $this->getChildAgeGroup($child),
             'session_params' => $sessionParams,
-            'generated_exercises' => $exercises->map(fn($exercise) => [
+            'generated_exercises' => $exercises->map(fn ($exercise) => [
                 'id' => $exercise->id,
                 'title' => $exercise->title,
                 'type' => $exercise->type,
                 'difficulty' => $exercise->difficulty,
                 'estimated_duration' => $exercise->estimated_duration,
-                'content_preview' => $this->getContentPreview($exercise->content)
-            ])
+                'content_preview' => $this->getContentPreview($exercise->content),
+            ]),
         ]);
     }
 
@@ -60,7 +60,7 @@ class AdaptiveExerciseController extends Controller
         $validated = $request->validate([
             'length' => 'required|integer|min:10|max:60',
             'focus_areas' => 'array',
-            'focus_areas.*' => 'string|in:pronunciation,articulation,rhythm,memory,other'
+            'focus_areas.*' => 'string|in:pronunciation,articulation,rhythm,memory,other',
         ]);
 
         $exercises = $this->adaptiveService->generateSessionExercises($child, $validated);
@@ -71,8 +71,8 @@ class AdaptiveExerciseController extends Controller
                 'estimated_duration' => $exercises->sum('estimated_duration'),
                 'exercises_count' => $exercises->count(),
                 'skill_coverage' => $this->analyzeSkillCoverage($exercises),
-                'exercises' => $exercises
-            ]
+                'exercises' => $exercises,
+            ],
         ]);
     }
 
@@ -91,7 +91,7 @@ class AdaptiveExerciseController extends Controller
             'overall_assessment' => $this->generateOverallAssessment($skillLevels),
             'skill_levels' => $skillLevels,
             'preferences' => $preferences,
-            'recommendations' => $this->generateRecommendations($skillLevels, $ageGroup)
+            'recommendations' => $this->generateRecommendations($skillLevels, $ageGroup),
         ]);
     }
 
@@ -101,7 +101,7 @@ class AdaptiveExerciseController extends Controller
     public function getRecommendations(Request $request, User $child): JsonResponse
     {
         $validated = $request->validate([
-            'limit' => 'integer|min:1|max:5'
+            'limit' => 'integer|min:1|max:5',
         ]);
 
         $limit = $validated['limit'] ?? 3;
@@ -110,7 +110,7 @@ class AdaptiveExerciseController extends Controller
         return response()->json([
             'child_id' => $child->id,
             'recommended_exercises' => $exercises,
-            'reasoning' => $this->getRecommendationReasoning($child, $exercises)
+            'reasoning' => $this->getRecommendationReasoning($child, $exercises),
         ]);
     }
 
@@ -125,7 +125,7 @@ class AdaptiveExerciseController extends Controller
             'avoid_types' => 'array',
             'avoid_types.*' => 'string|in:pronunciation,articulation,rhythm,memory,other',
             'optimal_session_length' => 'integer|min:5|max:60',
-            'preferred_difficulty' => 'string|in:easy,medium,hard'
+            'preferred_difficulty' => 'string|in:easy,medium,hard',
         ]);
 
         // Здесь можно сохранить предпочтения в отдельную таблицу или в metadata пользователя
@@ -133,7 +133,7 @@ class AdaptiveExerciseController extends Controller
 
         return response()->json([
             'message' => 'Preferences updated',
-            'preferences' => $validated
+            'preferences' => $validated,
         ]);
     }
 
@@ -151,7 +151,7 @@ class AdaptiveExerciseController extends Controller
             'strong_areas' => [],
             'areas_needing_work' => [],
             'session_streak' => 0,
-            'last_activity' => null
+            'last_activity' => null,
         ];
 
         foreach ($skillLevels as $type => $level) {
@@ -175,7 +175,7 @@ class AdaptiveExerciseController extends Controller
         return response()->json([
             'child_id' => $child->id,
             'statistics' => $stats,
-            'detailed_breakdown' => $skillLevels
+            'detailed_breakdown' => $skillLevels,
         ]);
     }
 
@@ -183,13 +183,13 @@ class AdaptiveExerciseController extends Controller
 
     private function getChildAgeGroup(User $child): string
     {
-        if (!$child->birth_date) {
+        if (! $child->birth_date) {
             return 'unknown';
         }
 
         $age = now()->diffInYears($child->birth_date);
 
-        return match(true) {
+        return match (true) {
             $age < 4 => 'toddler',
             $age < 7 => 'preschool',
             $age < 12 => 'school_junior',
@@ -203,7 +203,7 @@ class AdaptiveExerciseController extends Controller
         return [
             'exercise_type' => $content['exercise_type'] ?? 'unknown',
             'items_count' => count($content['items'] ?? []),
-            'has_instructions' => !empty($content['instructions'] ?? [])
+            'has_instructions' => ! empty($content['instructions'] ?? []),
         ];
     }
 
@@ -215,15 +215,15 @@ class AdaptiveExerciseController extends Controller
         return [
             'types_covered' => $types->keys()->toArray(),
             'difficulty_distribution' => $difficulties->map->count()->toArray(),
-            'estimated_total_time' => $exercises->sum('estimated_duration')
+            'estimated_total_time' => $exercises->sum('estimated_duration'),
         ];
     }
 
     private function generateOverallAssessment(array $skillLevels): string
     {
         $levels = collect($skillLevels)->pluck('level');
-        $beginnerCount = $levels->filter(fn($level) => $level === 'beginner')->count();
-        $expertCount = $levels->filter(fn($level) => $level === 'expert')->count();
+        $beginnerCount = $levels->filter(fn ($level) => $level === 'beginner')->count();
+        $expertCount = $levels->filter(fn ($level) => $level === 'expert')->count();
 
         if ($expertCount >= 2) {
             return 'Продвинутый уровень развития речи';
@@ -243,7 +243,7 @@ class AdaptiveExerciseController extends Controller
                 $recommendations[] = [
                     'type' => $type,
                     'priority' => 'high',
-                    'suggestion' => "Рекомендуется регулярная практика упражнений по {$this->getTypeName($type)}"
+                    'suggestion' => "Рекомендуется регулярная практика упражнений по {$this->getTypeName($type)}",
                 ];
             }
         }
@@ -252,7 +252,7 @@ class AdaptiveExerciseController extends Controller
             $recommendations[] = [
                 'type' => 'general',
                 'priority' => 'medium',
-                'suggestion' => 'Поддерживать текущий уровень через разнообразные упражнения'
+                'suggestion' => 'Поддерживать текущий уровень через разнообразные упражнения',
             ];
         }
 
@@ -261,7 +261,7 @@ class AdaptiveExerciseController extends Controller
 
     private function getTypeName(string $type): string
     {
-        return match($type) {
+        return match ($type) {
             'pronunciation' => 'произношению',
             'articulation' => 'артикуляции',
             'rhythm' => 'ритму речи',
@@ -277,13 +277,14 @@ class AdaptiveExerciseController extends Controller
         return [
             'skill_based_selection' => $exercises->map(function ($exercise) use ($skillLevels) {
                 $skillLevel = $skillLevels[$exercise->type] ?? null;
+
                 return [
                     'exercise_type' => $exercise->type,
-                    'reason' => $skillLevel ? "Уровень навыка: {$skillLevel['level']}" : 'Новый тип упражнения'
+                    'reason' => $skillLevel ? "Уровень навыка: {$skillLevel['level']}" : 'Новый тип упражнения',
                 ];
             }),
             'age_considerations' => $this->getChildAgeGroup($child),
-            'session_balance' => 'Сбалансированное покрытие разных навыков'
+            'session_balance' => 'Сбалансированное покрытие разных навыков',
         ];
     }
 }

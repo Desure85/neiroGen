@@ -18,7 +18,7 @@ class ComfyUiService
      * Note: ComfyUI expects a workflow JSON at /prompt.
      * For MVP, we send a minimal payload with prompt text and optional seed.
      *
-     * @param array $payload Arbitrary workflow/prompt payload understood by your ComfyUI workflow.
+     * @param  array  $payload  Arbitrary workflow/prompt payload understood by your ComfyUI workflow.
      * @return array{ok:bool,prompt_id?:string,error?:string}
      */
     public function requestGeneration(array $payload): array
@@ -30,10 +30,11 @@ class ComfyUiService
                 ->asJson()
                 ->post($url, $payload);
 
-            if (!$resp->successful()) {
+            if (! $resp->successful()) {
                 return ['ok' => false, 'error' => 'HTTP '.$resp->status().': '.$resp->body()];
             }
             $data = $resp->json() ?? [];
+
             return ['ok' => true, 'prompt_id' => (string) ($data['prompt_id'] ?? ($data['id'] ?? ''))];
         } catch (\Throwable $e) {
             return ['ok' => false, 'error' => $e->getMessage()];
