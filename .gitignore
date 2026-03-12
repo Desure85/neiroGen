@@ -137,3 +137,5 @@ coverage/
 # --- Misc ---
 .husky/_/
 notes/
+.kilocode/mcp.json
+.kilocodemodes
