@@ -25,9 +25,6 @@ class RegisterRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-            // optional fields
-            'tenant_id' => ['nullable', 'integer'],
-            'role' => ['nullable', 'string', 'max:50'],
         ];
     }
 }

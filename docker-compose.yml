@@ -202,7 +202,20 @@ services:
       - MINIO_PUBLIC_ENDPOINT=${MINIO_PUBLIC_ENDPOINT:-http://localhost:9000}
     command: >
       sh -c "
-      php artisan queue:work rabbitmq --sleep=1 --tries=3 --no-interaction
+      apt-get update && apt-get install -y supervisor && \
+      echo '[supervisord]\n' > /etc/supervisor/conf.d/supervisord.conf && \
+      echo 'nodaemon=true\n' >> /etc/supervisor/conf.d/supervisord.conf && \
+      echo '[program:queue-worker]\n' >> /etc/supervisor/conf.d/supervisord.conf && \
+      echo 'process_name=%(program_name)s_%(process_num)02d\n' >> /etc/supervisor/conf.d/supervisord.conf && \
+      echo 'command=php /var/www/artisan queue:work rabbitmq --sleep=1 --tries=3 --max-time=3600\n' >> /etc/supervisor/conf.d/supervisord.conf && \
+      echo 'autostart=true\n' >> /etc/supervisor/conf.d/supervisord.conf && \
+      echo 'autorestart=true\n' >> /etc/supervisor/conf.d/supervisord.conf && \
+      echo 'user=www-data\n' >> /etc/supervisor/conf.d/supervisord.conf && \
+      echo 'numprocs=2\n' >> /etc/supervisor/conf.d/supervisord.conf && \
+      echo 'redirect_stderr=true\n' >> /etc/supervisor/conf.d/supervisord.conf && \
+      echo 'stdout_logfile=/dev/stdout\n' >> /etc/supervisor/conf.d/supervisord.conf && \
+      echo 'stdout_logfile_maxbytes=0\n' >> /etc/supervisor/conf.d/supervisord.conf && \
+      supervisord -c /etc/supervisor/conf.d/supervisord.conf
       "
 
   minio:

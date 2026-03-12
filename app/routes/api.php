@@ -40,10 +40,14 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-// Exercise sessions routes
-Route::get('/sessions', [ExerciseSessionController::class, 'index']);
-Route::post('/sessions', [ExerciseSessionController::class, 'store']);
-Route::get('/sessions/{session}', [ExerciseSessionController::class, 'show']);
+// Exercise sessions routes - require auth for tenant isolation
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/sessions', [ExerciseSessionController::class, 'index']);
+    Route::post('/sessions', [ExerciseSessionController::class, 'store']);
+    Route::get('/sessions/{session}', [ExerciseSessionController::class, 'show']);
+});
+
+// Code-based session access - public but rate limited
 Route::get('/sessions/code/{code}', [ExerciseSessionController::class, 'getByCode']);
 Route::post('/sessions/code/{code}/results', [ExerciseSessionController::class, 'updateResults']);
 
@@ -114,10 +118,12 @@ Route::middleware('auth:sanctum')->prefix('content-blocks')->group(function () {
     Route::delete('/{block}', [ContentBlockController::class, 'destroy']);
 });
 
-// Child progress routes
-Route::get('/progress', [ChildProgressController::class, 'index']);
-Route::post('/progress', [ChildProgressController::class, 'store']);
-Route::get('/exercises/{exercise}/progress', [ChildProgressController::class, 'show']);
+// Child progress routes - require auth for data privacy
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/progress', [ChildProgressController::class, 'index']);
+    Route::post('/progress', [ChildProgressController::class, 'store']);
+    Route::get('/exercises/{exercise}/progress', [ChildProgressController::class, 'show']);
+});
 
 // Health endpoint used by Docker healthcheck
 Route::get('/health', [HealthController::class, 'index']);

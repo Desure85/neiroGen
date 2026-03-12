@@ -54,11 +54,17 @@ class ChildController extends Controller
 
     public function show(Request $request, Child $child): JsonResponse
     {
+        // Verify tenant ownership
+        abort_if($child->tenant_id !== $request->user()?->tenant_id, 404, 'Child not found');
+        
         return response()->json($child);
     }
 
     public function update(Request $request, Child $child): JsonResponse
     {
+        // Verify tenant ownership
+        abort_if($child->tenant_id !== $request->user()?->tenant_id, 404, 'Child not found');
+        
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
             'age' => 'sometimes|integer|min:1|max:18',
@@ -73,6 +79,9 @@ class ChildController extends Controller
 
     public function destroy(Request $request, Child $child): JsonResponse
     {
+        // Verify tenant ownership
+        abort_if($child->tenant_id !== $request->user()?->tenant_id, 404, 'Child not found');
+        
         $child->delete();
 
         return response()->json(null, 204);

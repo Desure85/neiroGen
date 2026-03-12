@@ -176,10 +176,14 @@ class ExerciseController extends Controller
      */
     private function formatBlocksPayload(array $blocks): array
     {
+        // Avoid N+1 queries by fetching all blocks in a single query
+        $blockIds = array_column($blocks, 'id');
+        $contentBlocks = ContentBlock::whereIn('id', $blockIds)->get()->keyBy('id');
+
         $payload = [];
 
         foreach ($blocks as $position => $block) {
-            $contentBlock = ContentBlock::find($block['id']);
+            $contentBlock = $contentBlocks->get($block['id']);
 
             if (! $contentBlock) {
                 continue;
