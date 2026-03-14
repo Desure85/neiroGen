@@ -362,6 +362,203 @@ export async function reorderExerciseTypeFields(
   }
 }
 
+// AI Prompt types for exercise types
+export interface ExerciseTypePrompt {
+  instructions: string
+  content: string
+  solution: string
+  variations: string
+}
+
+export interface ExerciseTypePromptTypes {
+  [key: string]: {
+    name: string
+    description: string
+    placeholder: string
+  }
+}
+
+export interface ExerciseTypePromptsResponse {
+  ok: boolean
+  prompts: ExerciseTypePrompt
+  types: ExerciseTypePromptTypes
+}
+
+export async function fetchExerciseTypePrompts(
+  exerciseTypeId: number | string,
+): Promise<ExerciseTypePromptsResponse> {
+  const response = await apiFetch(`/api/admin/exercise-types/${exerciseTypeId}/prompts`)
+  
+  if (!response.ok) {
+    throw new Error(`Не удалось загрузить промпты (${response.status})`)
+  }
+  
+  return response.json()
+}
+
+export async function updateExerciseTypePrompts(
+  exerciseTypeId: number | string,
+  prompts: ExerciseTypePrompt,
+): Promise<ExerciseTypePromptsResponse> {
+  const response = await apiFetch(`/api/admin/exercise-types/${exerciseTypeId}/prompts`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompts }),
+  })
+  
+  if (!response.ok) {
+    const body = await response.json().catch(() => null)
+    throw new Error(body?.message || `Не удалось сохранить промпты (${response.status})`)
+  }
+  
+  return response.json()
+}
+
+// ==================== Gamification Types ====================
+
+export interface GamificationStats {
+  xp: number
+  level: number
+  xp_progress: number
+  xp_to_next_level: number
+  streak_days: number
+  total_exercises_completed: number
+  total_time_spent: number
+  total_time_spent_formatted: string
+  achievements: string[]
+  rewards: unknown[]
+  avatar_theme: string
+}
+
+export interface Achievement {
+  id: string
+  name: string
+  description: string
+  icon: string
+  xp_reward: number
+  unlocked: boolean
+  progress: number
+  requirement: number
+  condition: string
+}
+
+export interface AchievementsResponse {
+  achievements: Achievement[]
+  unlocked_count: number
+  total_count: number
+}
+
+export interface CompleteExerciseResponse {
+  xp_earned: number
+  total_xp: number
+  level: number
+  streak_days: number
+  total_exercises: number
+  leveled_up: boolean
+  xp_progress: number
+  stats: GamificationStats
+  new_achievements: Achievement[]
+}
+
+// ==================== Gamification API ====================
+
+export async function fetchChildGamification(
+  childId: number | string
+): Promise<GamificationStats> {
+  const response = await apiFetch(`/api/children/${childId}/gamification`)
+  
+  if (!response.ok) {
+    throw new Error(`Не удалось загрузить статистику (${response.status})`)
+  }
+  
+  return response.json()
+}
+
+export async function fetchChildAchievements(
+  childId: number | string
+): Promise<AchievementsResponse> {
+  const response = await apiFetch(`/api/children/${childId}/achievements`)
+  
+  if (!response.ok) {
+    throw new Error(`Не удалось загрузить достижения (${response.status})`)
+  }
+  
+  return response.json()
+}
+
+export async function completeExercise(
+  childId: number | string,
+  timeSpent: number = 0
+): Promise<CompleteExerciseResponse> {
+  const response = await apiFetch(`/api/children/${childId}/complete-exercise`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ time_spent: timeSpent }),
+  })
+  
+  if (!response.ok) {
+    throw new Error(`Не удалось сохранить результат (${response.status})`)
+  }
+  
+  return response.json()
+}
+
+export async function updateChildAvatarTheme(
+  childId: number | string,
+  theme: string
+): Promise<{ ok: boolean; avatar_theme: string }> {
+  const response = await apiFetch(`/api/children/${childId}/avatar-theme`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ theme }),
+  })
+  
+  if (!response.ok) {
+    throw new Error(`Не удалось обновить тему (${response.status})`)
+  }
+  
+  return response.json()
+}
+
+// ==================== Exercise Type Delivery Types ====================
+
+export type DeliveryType = 'online' | 'printable'
+
+export interface DeliveryTypesResponse {
+  ok: boolean
+  delivery_types: DeliveryType[]
+  options: Record<DeliveryType, { name: string; description: string; icon: string }>
+}
+
+export async function fetchExerciseTypeDeliveryTypes(
+  exerciseTypeId: number | string
+): Promise<DeliveryTypesResponse> {
+  const response = await apiFetch(`/api/admin/exercise-types/${exerciseTypeId}/delivery-types`)
+  
+  if (!response.ok) {
+    throw new Error(`Не удалось загрузить типы выполнения (${response.status})`)
+  }
+  
+  return response.json()
+}
+
+export async function updateExerciseTypeDeliveryTypes(
+  exerciseTypeId: number | string,
+  deliveryTypes: DeliveryType[]
+): Promise<DeliveryTypesResponse> {
+  const response = await apiFetch(`/api/admin/exercise-types/${exerciseTypeId}/delivery-types`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ delivery_types: deliveryTypes }),
+  })
+  
+  if (!response.ok) {
+    throw new Error(`Не удалось обновить типы выполнения (${response.status})`)
+  }
+  
+  return response.json()
+}
+
 let cachedExerciseTypes: ExerciseTypeDto[] | null = null
 let exerciseTypesPromise: Promise<ExerciseTypeDto[]> | null = null
 
@@ -456,4 +653,119 @@ export async function getMe() {
   }
 
   return res.json()
+}
+
+// ==================== Worksheet Share & PDF API ====================
+
+export interface ShareLinkResponse {
+  share_token: string
+  share_url: string
+  expires_at: string | null
+}
+
+export interface WorksheetShareData {
+  id: number
+  title: string
+  share_token: string | null
+  share_expires_at: string | null
+  pdf_path: string | null
+  items_count: number
+}
+
+/**
+ * Generate a share link for parent to access printable worksheet.
+ */
+export async function generateWorksheetShareLink(
+  worksheetId: number | string,
+  daysValid: number = 30
+): Promise<ShareLinkResponse> {
+  const response = await apiFetch(`/api/worksheets/${worksheetId}/share`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ days: daysValid }),
+  })
+  
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new Error(error.message || `Не удалось создать ссылку (${response.status})`)
+  }
+  
+  return response.json()
+}
+
+/**
+ * Invalidate a worksheet share link.
+ */
+export async function invalidateWorksheetShareLink(
+  worksheetId: number | string
+): Promise<{ message: string }> {
+  const response = await apiFetch(`/api/worksheets/${worksheetId}/share`, {
+    method: 'DELETE',
+  })
+  
+  if (!response.ok) {
+    throw new Error(`Не удалось удалить ссылку (${response.status})`)
+  }
+  
+  return response.json()
+}
+
+/**
+ * Generate PDF for a worksheet.
+ */
+export async function generateWorksheetPdf(
+  worksheetId: number | string
+): Promise<{ url: string; format: string; copies: number }> {
+  const response = await apiFetch(`/api/worksheets/${worksheetId}/pdf`, {
+    method: 'POST',
+  })
+  
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new Error(error.message || `Не удалось сгенерировать PDF (${response.status})`)
+  }
+  
+  return response.json()
+}
+
+/**
+ * Get worksheet by share token (public access).
+ */
+export async function getWorksheetByShareToken(
+  token: string
+): Promise<WorksheetShareData> {
+  const response = await apiFetch(`/api/worksheets/share/${token}`)
+  
+  if (!response.ok) {
+    throw new Error(`Worksheet not found (${response.status})`)
+  }
+  
+  return response.json()
+}
+
+/**
+ * Upload completed worksheet photo (public access via token).
+ */
+export async function uploadCompletedWorksheet(
+  token: string,
+  photoFile: File,
+  notes?: string
+): Promise<{ message: string; photo_url: string }> {
+  const formData = new FormData()
+  formData.append('photo', photoFile)
+  if (notes) {
+    formData.append('notes', notes)
+  }
+  
+  const response = await apiFetch(`/api/worksheets/share/${token}/upload`, {
+    method: 'POST',
+    body: formData,
+  })
+  
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new Error(error.message || `Не удалось загрузить работу (${response.status})`)
+  }
+  
+  return response.json()
 }

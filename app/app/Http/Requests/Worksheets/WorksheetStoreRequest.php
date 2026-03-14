@@ -31,8 +31,8 @@ class WorksheetStoreRequest extends FormRequest
             'items.*.exercise_id' => ['nullable', 'integer', 'exists:exercises,id'],
             'items.*.title' => ['nullable', 'string', 'max:255'],
             'items.*.instructions' => ['nullable', 'array'],
-            'items.*.instructions.*' => ['string', 'max:500'],
-            'items.*.content_snapshot' => ['required', 'array'],
+            'items.*.instructions.*' => ['nullable', 'string', 'max:2000'],
+            'items.*.content_snapshot' => ['required', 'array', 'max:50000'],
             'items.*.can_regenerate' => ['sometimes', 'boolean'],
         ];
     }

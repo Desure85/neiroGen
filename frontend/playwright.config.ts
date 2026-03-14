@@ -10,6 +10,7 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
+    tsConfig: './tests/e2e/tsconfig.json',
   },
   webServer: {
     command:
@@ -22,7 +23,10 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: { 
+        ...devices['Desktop Chrome'],
+        channel: 'chromium',
+      },
     },
   ],
 })

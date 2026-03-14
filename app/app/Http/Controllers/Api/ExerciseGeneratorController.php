@@ -26,13 +26,18 @@ class ExerciseGeneratorController extends Controller
             'difficulty' => 'required|string|in:easy,medium,hard',
             'custom_params' => 'nullable|array',
         ]);
-        $exercise = $this->generator->generateExercise(
-            $validated['type'],
-            $validated['difficulty'],
-            $validated['custom_params'] ?? []
-        );
 
-        return response()->json($exercise, 201);
+        try {
+            $exercise = $this->generator->generateExercise(
+                $validated['type'],
+                $validated['difficulty'],
+                $validated['custom_params'] ?? []
+            );
+
+            return response()->json($exercise, 201);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to generate exercise: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -49,12 +54,16 @@ class ExerciseGeneratorController extends Controller
             'custom_params' => 'nullable|array',
         ]);
 
-        $exercises = $this->generator->generateBatch($validated['count'], $validated);
+        try {
+            $exercises = $this->generator->generateBatch($validated['count'], $validated);
 
-        return response()->json([
-            'generated_count' => $exercises->count(),
-            'exercises' => $exercises,
-        ], 201);
+            return response()->json([
+                'generated_count' => $exercises->count(),
+                'exercises' => $exercises,
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to generate exercises: ' . $e->getMessage()], 500);
+        }
     }
 
     /**

@@ -4,8 +4,5 @@ return [
     'svggen' => [
         'timeout' => env('SVGGEN_TIMEOUT', 150),
     ],
-    'comfyui' => [
-        'url' => env('COMFYUI_URL', 'http://localhost:8188'),
-        'timeout' => env('COMFYUI_TIMEOUT', 120),
-    ],
+    // ComfyUI removed - use centralized AI config (config/ai.php) instead
 ];

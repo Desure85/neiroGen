@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
+import { StatsCard } from '@/components/ui/stats-card'
 import {
   CheckCircle,
   XCircle,
@@ -75,7 +76,7 @@ export function ExerciseResults({ result, onSave, onRetry, onExit }: ExerciseRes
             ))}
           </div>
           <h2 className="text-2xl font-bold mb-2">{performance}</h2>
-          <p className="text-gray-600">
+          <p className="text-muted-foreground">
             Результаты выполнения упражнения
           </p>
         </div>
@@ -84,24 +85,26 @@ export function ExerciseResults({ result, onSave, onRetry, onExit }: ExerciseRes
       <CardContent className="space-y-6">
         {/* Основные метрики */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-blue-50 p-4 rounded-lg text-center">
-            <div className="text-2xl font-bold text-blue-600">{result.accuracy.toFixed(0)}%</div>
-            <div className="text-sm text-blue-600">Точность</div>
-          </div>
-          <div className="bg-green-50 p-4 rounded-lg text-center">
-            <div className="text-2xl font-bold text-green-600">{result.score}</div>
-            <div className="text-sm text-green-600">Очки</div>
-          </div>
-          <div className="bg-purple-50 p-4 rounded-lg text-center">
-            <div className="text-2xl font-bold text-purple-600">
-              {result.completedItems}/{result.totalItems}
-            </div>
-            <div className="text-sm text-purple-600">Элементы</div>
-          </div>
-          <div className="bg-orange-50 p-4 rounded-lg text-center">
-            <div className="text-2xl font-bold text-orange-600">{formatTime(result.timeSpent)}</div>
-            <div className="text-sm text-orange-600">Время</div>
-          </div>
+          <StatsCard
+            label="Точность"
+            value={`${result.accuracy.toFixed(0)}%`}
+            variant="blue"
+          />
+          <StatsCard
+            label="Очки"
+            value={result.score}
+            variant="green"
+          />
+          <StatsCard
+            label="Элементы"
+            value={`${result.completedItems}/${result.totalItems}`}
+            variant="purple"
+          />
+          <StatsCard
+            label="Время"
+            value={formatTime(result.timeSpent)}
+            variant="orange"
+          />
         </div>
 
         {/* Детальный прогресс */}
@@ -153,9 +156,9 @@ export function ExerciseResults({ result, onSave, onRetry, onExit }: ExerciseRes
         </div>
 
         {/* Рекомендации */}
-        <div className="bg-gray-50 p-4 rounded-lg">
+        <div className="bg-muted/50 p-4 rounded-lg">
           <h4 className="font-medium mb-2">Рекомендации:</h4>
-          <ul className="text-sm text-gray-600 space-y-1">
+          <ul className="text-sm text-muted-foreground space-y-1">
             {result.accuracy >= 80 && (
               <li className="flex items-start gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500 mt-0.5" />

@@ -1,0 +1,9 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["jest", "node", "@playwright/test"],
+    "lib": ["es2017", "dom", "dom.iterable", "es6"],
+    "skipLibCheck": true
+  },
+  "include": ["**/*.ts", "**/*.tsx"]
+}

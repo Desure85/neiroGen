@@ -7,7 +7,7 @@ use App\Models\Exercise;
 
 class ExerciseContentFactory
 {
-    public function createContentBlocksFromExercise(Exercise $exercise): array
+    public function createContentBlocksFromExercise(Exercise $exercise, int $userId): array
     {
         $contentBlocks = [];
         $order = 0;
@@ -18,7 +18,8 @@ class ExerciseContentFactory
                 $exercise->content['exercise_type'],
                 $item,
                 $exercise->type,
-                $order++
+                $order++,
+                $userId
             );
 
             if ($contentBlock) {
@@ -29,7 +30,7 @@ class ExerciseContentFactory
         return $contentBlocks;
     }
 
-    private function createContentBlockForItem(string $exerciseType, string $item, string $type, int $order): ?ContentBlock
+    private function createContentBlockForItem(string $exerciseType, string $item, string $type, int $order, int $userId): ?ContentBlock
     {
         $blockType = $this->determineBlockType($exerciseType);
         $content = $this->formatContentForBlock($exerciseType, $item, $type);
@@ -53,7 +54,7 @@ class ExerciseContentFactory
                 'show_progress' => true,
             ],
             'is_template' => false,
-            'created_by' => 1, // TODO: Использовать реального пользователя
+            'created_by' => $userId,
         ]);
     }
 

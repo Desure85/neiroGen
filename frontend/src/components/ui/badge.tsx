@@ -14,6 +14,22 @@ const badgeVariants = cva(
         destructive:
           "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
         outline: "text-foreground",
+        // Difficulty levels
+        easy: "border-transparent bg-green-100 text-green-800 hover:bg-green-200",
+        medium: "border-transparent bg-yellow-100 text-yellow-800 hover:bg-yellow-200",
+        hard: "border-transparent bg-red-100 text-red-800 hover:bg-red-200",
+        // Status variants
+        success: "border-transparent bg-green-50 text-green-700 hover:bg-green-100",
+        warning: "border-transparent bg-yellow-50 text-yellow-700 hover:bg-yellow-100",
+        info: "border-transparent bg-blue-50 text-blue-700 hover:bg-blue-100",
+        error: "border-transparent bg-red-50 text-red-700 hover:bg-red-100",
+        // Content block types
+        text: "border-transparent bg-blue-100 text-blue-800",
+        image: "border-transparent bg-green-100 text-green-800",
+        audio: "border-transparent bg-purple-100 text-purple-800",
+        video: "border-transparent bg-red-100 text-red-800",
+        interactive: "border-transparent bg-yellow-100 text-yellow-800",
+        drawing: "border-transparent bg-pink-100 text-pink-800",
       },
     },
     defaultVariants: {

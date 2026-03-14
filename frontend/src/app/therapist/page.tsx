@@ -29,7 +29,6 @@ import { FileManager } from "@/components/file-manager"
 import { useI18n } from "@/components/localization"
 import { cn } from "@/lib/utils"
 import { apiFetch } from "@/lib/api"
-import { listComfyPresets, generateWithPreset, type ComfyPreset } from "@/lib/comfy"
 import ProtectedRoute from "@/components/protected-route"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
@@ -130,13 +129,6 @@ function TherapistDashboardContent() {
     { value: 'sessions', label: t('tab_sessions') },
   ]
 
-  // ComfyUI presets state
-  const [comfyPresets, setComfyPresets] = useState<ComfyPreset[]>([])
-  const [comfyLoading, setComfyLoading] = useState(false)
-  const [selectedPresetId, setSelectedPresetId] = useState<number | ''>('' as any)
-  const [comfyVars, setComfyVars] = useState<Record<string, any>>({ prompt: '', width: 512, height: 512 })
-  const [comfyResult, setComfyResult] = useState<any>(null)
-  const [comfyError, setComfyError] = useState<string | null>(null)
 
   // Sync tab/type from URL query params (URL has priority), then fallback to localStorage
   useEffect(() => {
@@ -160,34 +152,13 @@ function TherapistDashboardContent() {
       window.localStorage.setItem('therapist_tab', activeTab)
     }
     // keep other params if needed later
-    const params = new URLSearchParams(Array.from(searchParams.entries()))
+    const params = new URLSearchParams()
+    ;(searchParams as URLSearchParams).forEach((value: string, key: string) => {
+      params.set(key, value)
+    })
     params.set('tab', activeTab)
     router.replace(`${pathname}?${params.toString()}`, { scroll: false })
   }, [activeTab, pathname, router, searchParams])
-
-  // Load comfy presets when tab becomes active (or first mount)
-  useEffect(() => {
-    if (activeTab !== 'comfy') return
-    let mounted = true
-    ;(async () => {
-      try {
-        setComfyLoading(true)
-        const items = await listComfyPresets()
-        if (!mounted) return
-        setComfyPresets(items)
-        if (items.length > 0 && !selectedPresetId) {
-          setSelectedPresetId(items[0].id)
-          const d = items[0].defaults || {}
-          setComfyVars({ prompt: '', width: 512, height: 512, ...d })
-        }
-      } catch (e) {
-        // ignore
-      } finally {
-        if (mounted) setComfyLoading(false)
-      }
-    })()
-    return () => { mounted = false }
-  }, [activeTab, selectedPresetId])
 
   // Моковые данные детей (в state)
   const initialChildren: Child[] = [

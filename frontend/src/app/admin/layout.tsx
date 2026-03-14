@@ -23,7 +23,7 @@ const ADMIN_SECTIONS: AdminSection[] = [
     items: [
       { href: "/admin", label: "Дашборд" },
       { href: "/admin/assignments", label: "Задания" },
-      { href: "/admin/comfy", label: "ComfyUI" },
+      { href: "/admin/ai", label: "AI провайдеры" },
     ],
   },
   {

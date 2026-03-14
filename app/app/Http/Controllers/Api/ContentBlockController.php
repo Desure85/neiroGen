@@ -84,8 +84,10 @@ class ContentBlockController extends Controller
             $block = $this->blockService->createBlock($validated, $request->user());
 
             return response()->json($block, 201);
-        } catch (\Exception $e) {
+        } catch (InvalidArgumentException $e) {
             return response()->json(['error' => $e->getMessage()], 422);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Internal server error'], 500);
         }
     }
 
@@ -128,8 +130,10 @@ class ContentBlockController extends Controller
             $updatedBlock = $this->blockService->updateBlock($content_block, $validated);
 
             return response()->json($updatedBlock);
-        } catch (\Exception $e) {
+        } catch (InvalidArgumentException $e) {
             return response()->json(['error' => $e->getMessage()], 422);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Internal server error'], 500);
         }
     }
 
@@ -144,8 +148,10 @@ class ContentBlockController extends Controller
             $this->blockService->deleteBlock($content_block);
 
             return response()->json(null, 204);
-        } catch (\Exception $e) {
+        } catch (RuntimeException $e) {
             return response()->json(['error' => $e->getMessage()], 422);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Internal server error'], 500);
         }
     }
 

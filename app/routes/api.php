@@ -5,10 +5,9 @@ use App\Http\Controllers\Admin\ExerciseTypeFieldController as AdminExerciseTypeF
 use App\Http\Controllers\Api\AdaptiveExerciseController;
 use App\Http\Controllers\Api\AssignmentController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\AiController;
 use App\Http\Controllers\Api\ChildController;
 use App\Http\Controllers\Api\ChildProgressController;
-use App\Http\Controllers\Api\ComfyGenerationController;
-use App\Http\Controllers\Api\ComfyPresetController;
 use App\Http\Controllers\Api\ContentBlockController;
 use App\Http\Controllers\Api\ExerciseController;
 use App\Http\Controllers\Api\ExerciseGeneratorController;
@@ -16,7 +15,6 @@ use App\Http\Controllers\Api\ExerciseSessionController;
 use App\Http\Controllers\Api\ExerciseTemplateController;
 use App\Http\Controllers\Api\ExerciseTypesController;
 use App\Http\Controllers\Api\HealthController;
-use App\Http\Controllers\Api\IntegrationController;
 use App\Http\Controllers\Api\WorksheetController;
 use App\Http\Controllers\Api\WorksheetLayoutController;
 use App\Http\Controllers\Api\WorksheetPresetController;
@@ -60,6 +58,12 @@ Route::apiResource('exercises', ExerciseController::class);
 // Children routes (CRUD) — require auth for tenant scoping and created_by
 Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('children', ChildController::class);
+    
+    // Gamification routes
+    Route::get('children/{child}/gamification', [ChildController::class, 'gamification']);
+    Route::get('children/{child}/achievements', [ChildController::class, 'achievements']);
+    Route::post('children/{child}/complete-exercise', [ChildController::class, 'completeExercise']);
+    Route::patch('children/{child}/avatar-theme', [ChildController::class, 'updateAvatarTheme']);
 });
 
 // Content blocks routes — require auth for permissions/ownership
@@ -155,16 +159,38 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/worksheets/{worksheet}/items/{item}/regenerate', [WorksheetController::class, 'regenerateItem']);
     Route::post('/worksheets/generate', [WorksheetController::class, 'generate']);
     Route::post('/worksheets/generate-async', [WorksheetController::class, 'generateAsync']);
+    Route::post('/worksheets/{worksheet}/pdf', [WorksheetController::class, 'generatePdf']);
+    Route::post('/worksheets/{worksheet}/share', [WorksheetController::class, 'generateShareLink']);
+    Route::delete('/worksheets/{worksheet}/share', [WorksheetController::class, 'invalidateShareLink']);
+
+    // Public worksheet access via share token (for parents) - with rate limiting
+    Route::middleware('throttle:10,1')->group(function () {
+        Route::get('/worksheets/share/{token}', [WorksheetController::class, 'getByShareToken']);
+        Route::post('/worksheets/share/{token}/upload', [WorksheetController::class, 'uploadCompleted']);
+    });
 
     // Assignments CRUD
     Route::apiResource('assignments', AssignmentController::class);
     Route::post('/assignments/{assignment}/illustration', [AssignmentController::class, 'generateIllustration']);
 
-    // Integrations
-    Route::get('/integration/comfy/health', [IntegrationController::class, 'comfyHealth']);
+    // AI Generation Routes (replaces ComfyUI)
+    Route::middleware(['auth:sanctum', 'throttle:10,1'])->group(function () {
+        Route::get('/ai/health', [AiController::class, 'health']);
+        Route::get('/ai/providers', [AiController::class, 'providers']);
+        Route::put('/ai/providers/{provider}', [AiController::class, 'updateProvider']);
+        Route::post('/ai/generate', [AiController::class, 'generate']);
+        Route::post('/ai/text', [AiController::class, 'generateText']);
+        Route::post('/ai/image', [AiController::class, 'generateImage']);
+        Route::post('/ai/exercise', [AiController::class, 'generateExercise']);
+    });
 
-    // File Manager routes
-    Route::prefix('files')->group(function () {
+    // Integrations - require auth for AI health check
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/integration/ai/health', [AiController::class, 'health']);
+    });
+
+    // File Manager routes - require auth
+    Route::prefix('files')->middleware('auth:sanctum')->group(function () {
         Route::get('/', [FileManagerController::class, 'index']);
         Route::get('/tree', [FileManagerController::class, 'tree']);
         Route::post('/folders', [FileManagerController::class, 'createFolder']);
@@ -182,13 +208,6 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 });
 
-// ComfyUI Presets
-// Read-only for any authenticated user
-Route::middleware(['auth:sanctum'])->group(function () {
-    Route::get('comfy-presets', [ComfyPresetController::class, 'index']);
-    Route::get('comfy-presets/{comfyPreset}', [ComfyPresetController::class, 'show']);
-    Route::post('/comfy/generate/{comfyPreset}', [ComfyGenerationController::class, 'generate']);
-});
 // Admin-only routes
 Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
     Route::prefix('admin')->group(function () {
@@ -198,15 +217,18 @@ Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
         Route::put('exercise-types/{exerciseType}', [AdminExerciseTypeController::class, 'update']);
         Route::patch('exercise-types/{exerciseType}', [AdminExerciseTypeController::class, 'update']);
         Route::delete('exercise-types/{exerciseType}', [AdminExerciseTypeController::class, 'destroy']);
+        
+        // AI Prompts
+        Route::get('exercise-types/{exerciseType}/prompts', [AdminExerciseTypeController::class, 'prompts']);
+        Route::put('exercise-types/{exerciseType}/prompts', [AdminExerciseTypeController::class, 'updatePrompts']);
+        
+        // Delivery Types (printable/online)
+        Route::get('exercise-types/{exerciseType}/delivery-types', [AdminExerciseTypeController::class, 'deliveryTypes']);
+        Route::put('exercise-types/{exerciseType}/delivery-types', [AdminExerciseTypeController::class, 'updateDeliveryTypes']);
 
         Route::post('exercise-types/{exerciseType}/fields', [AdminExerciseTypeFieldController::class, 'store']);
         Route::patch('exercise-types/{exerciseType}/fields/{exerciseTypeField}', [AdminExerciseTypeFieldController::class, 'update']);
         Route::delete('exercise-types/{exerciseType}/fields/{exerciseTypeField}', [AdminExerciseTypeFieldController::class, 'destroy']);
         Route::post('exercise-types/{exerciseType}/fields/reorder', [AdminExerciseTypeFieldController::class, 'reorder']);
     });
-
-    Route::post('comfy-presets', [ComfyPresetController::class, 'store']);
-    Route::put('comfy-presets/{comfyPreset}', [ComfyPresetController::class, 'update']);
-    Route::patch('comfy-presets/{comfyPreset}', [ComfyPresetController::class, 'update']);
-    Route::delete('comfy-presets/{comfyPreset}', [ComfyPresetController::class, 'destroy']);
 });

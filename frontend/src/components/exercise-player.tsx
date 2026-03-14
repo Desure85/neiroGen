@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
+import { StatsCard } from '@/components/ui/stats-card'
 import {
   Play,
   Pause,
@@ -139,14 +140,16 @@ export function ExercisePlayer({ exercise, onComplete, onExit }: ExercisePlayerP
           </div>
 
           <div className="grid grid-cols-2 gap-4 mb-6">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">{accuracy.toFixed(0)}%</div>
-              <div className="text-sm text-blue-600">Точность</div>
-            </div>
-            <div className="bg-green-50 p-4 rounded-lg">
-              <div className="text-2xl font-bold text-green-600">{score}</div>
-              <div className="text-sm text-green-600">Очки</div>
-            </div>
+            <StatsCard
+              label="Точность"
+              value={`${accuracy.toFixed(0)}%`}
+              variant="blue"
+            />
+            <StatsCard
+              label="Очки"
+              value={score}
+              variant="green"
+            />
           </div>
 
           <div className="flex gap-4">
@@ -173,11 +176,7 @@ export function ExercisePlayer({ exercise, onComplete, onExit }: ExercisePlayerP
               <CardTitle>{exercise.title}</CardTitle>
               <div className="flex gap-2 mt-1">
                 <Badge variant="outline">{exercise.type}</Badge>
-                <Badge className={
-                  exercise.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
-                  exercise.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-red-100 text-red-800'
-                }>
+                <Badge variant={exercise.difficulty === 'easy' ? 'easy' : exercise.difficulty === 'medium' ? 'medium' : 'hard'}>
                   {exercise.difficulty}
                 </Badge>
               </div>
@@ -194,7 +193,7 @@ export function ExercisePlayer({ exercise, onComplete, onExit }: ExercisePlayerP
 
       <CardContent className="space-y-6">
         {/* Инструкции */}
-        <div className="bg-blue-50 p-4 rounded-lg">
+        <div className="bg-muted/50 p-4 rounded-lg">
           <h3 className="font-medium mb-2">Инструкция:</h3>
           <ul className="space-y-1 text-sm">
             {exercise.content.instructions.map((instruction: string, index: number) => (
@@ -260,7 +259,7 @@ export function ExercisePlayer({ exercise, onComplete, onExit }: ExercisePlayerP
           <Button
             onClick={() => handleItemComplete(currentStep, true)}
             size="lg"
-            className="bg-green-600 hover:bg-green-700"
+            variant="success"
           >
             <CheckCircle className="mr-2 h-5 w-5" />
             Готово!

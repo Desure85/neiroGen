@@ -42,6 +42,40 @@ module.exports = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
+        // Semantic status colors
+        success: {
+          DEFAULT: 'hsl(var(--success))',
+          foreground: 'hsl(var(--success-foreground))',
+          light: '#dcfce7',
+          dark: '#166534',
+        },
+        warning: {
+          DEFAULT: 'hsl(var(--warning))',
+          foreground: 'hsl(var(--warning-foreground))',
+          light: '#fef9c3',
+          dark: '#854d0e',
+        },
+        info: {
+          DEFAULT: 'hsl(var(--info))',
+          foreground: 'hsl(var(--info-foreground))',
+          light: '#dbeafe',
+          dark: '#1e40af',
+        },
+        error: {
+          DEFAULT: 'hsl(var(--error))',
+          foreground: 'hsl(var(--error-foreground))',
+          light: '#fee2e2',
+          dark: '#991b1b',
+        },
+        // Difficulty colors
+        difficulty: {
+          easy: '#dcfce7',
+          easyForeground: '#166534',
+          medium: '#fef9c3',
+          mediumForeground: '#854d0e',
+          hard: '#fee2e2',
+          hardForeground: '#991b1b',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',

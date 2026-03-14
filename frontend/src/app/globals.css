@@ -25,22 +25,15 @@
     --ring: 217 91% 60%;
     --radius: 0.5rem;
 
-    /* Medical app custom colors */
-    --medical-primary: 217 91% 60%;
-    --medical-secondary: 142 76% 36%;
-    --medical-accent: 45 93% 58%;
-    --medical-success: 142 76% 36%;
-    --medical-warning: 45 93% 58%;
-    --medical-danger: 0 84% 60%;
-    --medical-info: 199 89% 48%;
-
-    /* Child-friendly colors */
-    --child-primary: 217 91% 60%;
-    --child-secondary: 142 76% 36%;
-    --child-accent: 45 93% 58%;
-    --child-success: 142 76% 36%;
-    --child-warning: 45 93% 58%;
-    --child-danger: 0 84% 60%;
+    /* Semantic colors - Status */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 45 93% 58%;
+    --warning-foreground: 0 0% 0%;
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+    --error: 0 84% 60%;
+    --error-foreground: 0 0% 100%;
   }
 
   .dark {
@@ -123,34 +116,4 @@
 
 .animate-pulse-soft {
   animation: pulse-soft 2s infinite;
-}
-
-/* Medical app specific styles */
-.medical-card {
-  @apply bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700;
-}
-
-.medical-button-primary {
-  @apply bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg transition-colors;
-}
-
-.medical-button-secondary {
-  @apply bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 rounded-lg transition-colors;
-}
-
-.medical-button-accent {
-  @apply bg-yellow-500 hover:bg-yellow-600 text-white font-medium px-4 py-2 rounded-lg transition-colors;
-}
-
-/* Child-friendly styles */
-.child-exercise {
-  @apply bg-gradient-to-br from-blue-50 to-green-50 dark:from-blue-950 dark:to-green-950 rounded-xl p-6 border-2 border-blue-200 dark:border-blue-800;
-}
-
-.child-button {
-  @apply bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600 text-white font-bold py-3 px-6 rounded-full text-lg shadow-lg transform hover:scale-105 transition-all duration-200;
-}
-
-.child-text {
-  @apply text-2xl font-bold text-blue-700 dark:text-blue-300;
 }

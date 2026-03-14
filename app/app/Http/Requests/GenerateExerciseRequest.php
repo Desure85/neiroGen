@@ -11,7 +11,7 @@ class GenerateExerciseRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true; // TODO: Добавить авторизацию
+        return auth()->check();
     }
 
     /**

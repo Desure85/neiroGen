@@ -7,6 +7,8 @@ use App\Models\Exercise;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
+use InvalidArgumentException;
+use RuntimeException;
 
 class ContentBlockService
 {
@@ -36,7 +38,7 @@ class ContentBlockService
     {
         // Проверяем, используется ли блок в упражнениях
         if ($block->exercises()->exists()) {
-            throw new \Exception('Нельзя удалить блок, который используется в упражнениях');
+            throw new RuntimeException('Нельзя удалить блок, который используется в упражнениях');
         }
 
         return $block->delete();
@@ -73,7 +75,7 @@ class ContentBlockService
         $blocks = ContentBlock::whereIn('id', $blockIds)->orderBy('id')->get();
 
         if ($blocks->count() !== count($blockIds)) {
-            throw new \Exception('Один или несколько блоков не найдены');
+            throw new RuntimeException('Один или несколько блоков не найдены');
         }
 
         $exercise = Exercise::create(array_merge([
@@ -149,7 +151,7 @@ class ContentBlockService
 
             foreach ($keys as $key) {
                 if (! isset($value[$key])) {
-                    throw new \Exception("Поле {$field} обязательно для типа {$data['type']}");
+                    throw new InvalidArgumentException("Поле {$field} обязательно для типа {$data['type']}");
                 }
                 $value = $value[$key];
             }

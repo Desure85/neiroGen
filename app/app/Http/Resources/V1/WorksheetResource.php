@@ -26,6 +26,8 @@ class WorksheetResource extends JsonResource
             'footer_html' => $this->footer_html,
             'generated_at' => optional($this->generated_at)->toIso8601String(),
             'pdf_path' => $this->pdf_path,
+            'share_token' => $this->share_token,
+            'share_expires_at' => optional($this->share_expires_at)->toIso8601String(),
             'child_id' => $this->child_id,
             'items' => WorksheetItemResource::collection($this->whenLoaded('items')),
             'layout' => new WorksheetLayoutResource($this->whenLoaded('layout')),

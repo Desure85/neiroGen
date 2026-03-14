@@ -107,4 +107,75 @@ class ExerciseTypeController extends Controller
 
         return response()->json(null, 204);
     }
+
+    /**
+     * GET /admin/exercise-types/{exerciseType}/prompts
+     * Get AI prompts for an exercise type
+     */
+    public function prompts(ExerciseType $exerciseType): JsonResponse
+    {
+        return response()->json([
+            'ok' => true,
+            'prompts' => $exerciseType->getPrompts(),
+            'types' => ExerciseType::getPromptTypes(),
+        ]);
+    }
+
+    /**
+     * PUT /admin/exercise-types/{exerciseType}/prompts
+     * Update AI prompts for an exercise type
+     */
+    public function updatePrompts(Request $request, ExerciseType $exerciseType): JsonResponse
+    {
+        $request->validate([
+            'prompts' => 'required|array',
+            'prompts.instructions' => 'nullable|string',
+            'prompts.content' => 'nullable|string',
+            'prompts.solution' => 'nullable|string',
+            'prompts.variations' => 'nullable|string',
+        ]);
+
+        $exerciseType->setPrompts($request->input('prompts'));
+        $exerciseType->save();
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Промпты сохранены',
+            'prompts' => $exerciseType->getPrompts(),
+        ]);
+    }
+
+    /**
+     * GET /admin/exercise-types/{exerciseType}/delivery-types
+     * Get delivery types for an exercise type
+     */
+    public function deliveryTypes(ExerciseType $exerciseType): JsonResponse
+    {
+        return response()->json([
+            'ok' => true,
+            'delivery_types' => $exerciseType->getDeliveryTypes(),
+            'options' => ExerciseType::getDeliveryTypeOptions(),
+        ]);
+    }
+
+    /**
+     * PUT /admin/exercise-types/{exerciseType}/delivery-types
+     * Update delivery types for an exercise type
+     */
+    public function updateDeliveryTypes(Request $request, ExerciseType $exerciseType): JsonResponse
+    {
+        $request->validate([
+            'delivery_types' => 'required|array|min:1',
+            'delivery_types.*' => 'required|string|in:online,printable',
+        ]);
+
+        $exerciseType->setDeliveryTypes($request->input('delivery_types'));
+        $exerciseType->save();
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Типы выполнения сохранены',
+            'delivery_types' => $exerciseType->getDeliveryTypes(),
+        ]);
+    }
 }

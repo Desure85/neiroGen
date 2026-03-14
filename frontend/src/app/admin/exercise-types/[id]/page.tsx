@@ -60,6 +60,8 @@ import {
   type ExerciseTypeFormChangeHandler,
   type ExerciseTypeFormState,
 } from "@/components/admin/exercise-types/exercise-type-form"
+import { PromptEditor } from "@/components/admin/exercise-types/prompt-editor"
+import { DeliveryTypesEditor } from "@/components/admin/exercise-types/delivery-types-editor"
 
 interface NewFieldForm {
   label: string
@@ -1002,6 +1004,8 @@ export default function ExerciseTypeDetailPage() {
         <TabsList>
           <TabsTrigger value="details">Основное</TabsTrigger>
           <TabsTrigger value="fields">Поля ({fieldsSorted.length})</TabsTrigger>
+          <TabsTrigger value="prompts">AI Промпты</TabsTrigger>
+          <TabsTrigger value="delivery">Выполнение</TabsTrigger>
           <TabsTrigger value="usage">Использование</TabsTrigger>
         </TabsList>
 
@@ -1237,6 +1241,14 @@ export default function ExerciseTypeDetailPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="prompts">
+          <PromptEditor exerciseTypeId={id} />
+        </TabsContent>
+
+        <TabsContent value="delivery">
+          <DeliveryTypesEditor exerciseTypeId={id} />
         </TabsContent>
       </Tabs>
     </div>

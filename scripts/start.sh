@@ -5,15 +5,26 @@ cd /var/www
 
 echo "[start] Container init..."
 
+# Skip recursive chown on mounted volumes - vendor already has correct ownership in image
+# Only chown directories that need write access (storage, cache)
+echo "[start] Fixing ownership for writable directories..."
+chown -R www:www /var/www/storage /var/www/bootstrap/cache 2>/dev/null || true
+chmod -R 777 /var/www/storage /var/www/bootstrap/cache 2>/dev/null || true
+
 # Install dependencies if vendor is missing (volume mounts may hide built vendor)
 if [ ! -f "vendor/autoload.php" ]; then
   echo "[start] Installing composer dependencies..."
   composer install --no-dev --prefer-dist --no-interaction --no-progress
 fi
 
-# Always refresh optimized autoloader in case new classes were added
-echo "[start] Dumping optimized autoloader..."
-composer dump-autoload -o --no-interaction
+# Only dump optimized autoload if vendor was freshly installed (not mounted)
+# Skip if vendor exists from mount to avoid permission issues
+if [ -f "vendor/autoload.php" ]; then
+  echo "[start] Vendor exists (likely mounted), skipping optimized autoload..."
+else
+  echo "[start] Dumping optimized autoloader..."
+  composer dump-autoload -o --no-interaction
+fi
 
 # Ensure writable directories exist and are writable (early)
 echo "[start] Ensuring writable directories (early)..."
@@ -117,15 +128,6 @@ fi
 # Try to ensure RR is installed (non-fatal if fails)
 install_rr || true
 
-# Start server
-# Only start Octane if RR binary exists AND is valid (prints version) and sockets ext is loaded
-if { command -v rr >/dev/null 2>&1 || [ -x "$RR_BIN" ]; } \
-   && (rr --version >/dev/null 2>&1 || "$RR_BIN" --version >/dev/null 2>&1) \
-   && php -m | grep -qi sockets; then
-  which rr >/dev/null 2>&1 && echo "[start] rr found at: $(which rr)" || echo "[start] rr found at: $RR_BIN"
-  echo "[start] Starting Laravel Octane (RoadRunner) on 0.0.0.0:8000"
-  exec php artisan octane:start --server=roadrunner --host=0.0.0.0 --port=8000 --no-interaction
-else
-  echo "[start] Octane prerequisites not satisfied (rr/sockets). Starting Laravel development server (artisan serve) on 0.0.0.0:8000"
-  exec php artisan serve --host=0.0.0.0 --port=8000
-fi
+# Start server - use artisan serve instead of Octane to avoid plugin issues
+echo "[start] Starting Laravel development server (artisan serve) on 0.0.0.0:8000"
+exec php artisan serve --host=0.0.0.0 --port=8000

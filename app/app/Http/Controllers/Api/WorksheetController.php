@@ -18,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Throwable;
 
@@ -275,6 +276,33 @@ class WorksheetController extends Controller
         ], 202);
     }
 
+    /**
+     * Generate PDF for an existing worksheet.
+     */
+    public function generatePdf(Worksheet $worksheet): JsonResponse
+    {
+        $this->authorizeTenant($worksheet);
+        
+        $worksheet->load('items');
+        
+        try {
+            $url = $this->service->generateFromWorksheet($worksheet);
+        } catch (Throwable $e) {
+            report($e);
+            
+            return response()->json([
+                'message' => 'Не удалось сформировать PDF лист.',
+                'error' => $e->getMessage(),
+            ], 422);
+        }
+        
+        return response()->json([
+            'url' => $url,
+            'format' => $worksheet->format ?? 'A4',
+            'copies' => $worksheet->copies ?? 1,
+        ]);
+    }
+
     private function authorizeTenant(Worksheet $worksheet): void
     {
         $user = auth()->user();
@@ -282,5 +310,88 @@ class WorksheetController extends Controller
         if ($user && $user->tenant_id !== null && $worksheet->tenant_id !== $user->tenant_id) {
             abort(404, 'Worksheet not found');
         }
+    }
+
+    /**
+     * Generate a share link for parent access.
+     */
+    public function generateShareLink(Request $request, Worksheet $worksheet): JsonResponse
+    {
+        $this->authorizeTenant($worksheet);
+        
+        $daysValid = $request->integer('days', 30);
+        $daysValid = max(1, min(90, $daysValid));
+        
+        $token = $worksheet->generateShareToken($daysValid);
+        $shareUrl = $worksheet->getShareUrl();
+        
+        return response()->json([
+            'share_token' => $token,
+            'share_url' => $shareUrl,
+            'expires_at' => $worksheet->share_expires_at?->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * Invalidate share link.
+     */
+    public function invalidateShareLink(Worksheet $worksheet): JsonResponse
+    {
+        $this->authorizeTenant($worksheet);
+        $worksheet->invalidateShareToken();
+        
+        return response()->json(['message' => 'Ссылка для родителя деактивирована']);
+    }
+
+    /**
+     * Get worksheet by share token (public access).
+     */
+    public function getByShareToken(string $token): WorksheetResource
+    {
+        $worksheet = Worksheet::where('share_token', $token)
+            ->where(function ($query) {
+                $query->whereNull('share_expires_at')
+                    ->orWhere('share_expires_at', '>', now());
+            })
+            ->with(['items', 'child'])
+            ->firstOrFail();
+        
+        return new WorksheetResource($worksheet);
+    }
+
+    /**
+     * Upload completed worksheet photo (public access via token).
+     */
+    public function uploadCompleted(Request $request, string $token): JsonResponse
+    {
+        $worksheet = Worksheet::where('share_token', $token)
+            ->where(function ($query) {
+                $query->whereNull('share_expires_at')
+                    ->orWhere('share_expires_at', '>', now());
+            })
+            ->firstOrFail();
+        
+        $validated = $request->validate([
+            'photo' => ['required', 'image', 'max:10240'], // 10MB max
+            'notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+        
+        $path = $request->file('photo')->store('completed-worksheets', 'public');
+        $url = Storage::disk('public')->url($path);
+        
+        // Update worksheet with completed work info
+        $meta = $worksheet->meta ?? [];
+        $meta['completed_at'] = now()->toIso8601String();
+        $meta['completed_photo_url'] = $url;
+        $meta['completion_notes'] = $validated['notes'] ?? null;
+        $worksheet->update([
+            'meta' => $meta,
+            'status' => 'completed',
+        ]);
+        
+        return response()->json([
+            'message' => 'Работа успешно загружена!',
+            'photo_url' => $url,
+        ], 201);
     }
 }

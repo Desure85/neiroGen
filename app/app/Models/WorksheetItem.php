@@ -29,6 +29,41 @@ class WorksheetItem extends Model
         'last_regenerated_at' => 'datetime',
     ];
 
+    /**
+     * Mutator to ensure instructions is always an array.
+     */
+    public function setInstructionsAttribute($value): void
+    {
+        if (is_string($value)) {
+            $this->attributes['instructions'] = [$value];
+        } elseif (is_array($value)) {
+            $this->attributes['instructions'] = $value;
+        } else {
+            $this->attributes['instructions'] = [];
+        }
+    }
+
+    /**
+     * Mutator to ensure content_snapshot is always an array.
+     */
+    public function setContentSnapshotAttribute($value): void
+    {
+        if (is_array($value)) {
+            $this->attributes['content_snapshot'] = $value;
+        } elseif (is_string($value)) {
+            try {
+                $decoded = json_decode($value, true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $this->attributes['content_snapshot'] = $decoded;
+                    return;
+                }
+            } catch (\Exception $e) {
+                // Ignore
+            }
+        }
+        $this->attributes['content_snapshot'] = [];
+    }
+
     public function worksheet(): BelongsTo
     {
         return $this->belongsTo(Worksheet::class);
